@@ -48,4 +48,6 @@ ideaspark ESP32 1.9 inch LCD firmware:
 The easiest path for users is the
 [browser flasher](https://distortions81.github.io/M45-Core-Firmware/).
 
-Release tags also include OLED and LCD merged `.bin` images for direct flashing.
+Release tags include two merged `.bin` flash images: one for OLED and one for
+the ideaspark 1.9 inch LCD. The browser flasher uses those same images for both
+settings-preserving updates and clean setup flashes.

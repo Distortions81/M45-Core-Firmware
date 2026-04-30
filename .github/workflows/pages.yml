@@ -32,10 +32,85 @@ jobs:
         with:
           enablement: true
 
+      - name: Build Pages content
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pages-dist/firmware/latest
+          cp -R docs/. pages-dist/
+          if gh release view --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            tag="$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName)"
+            file_tag="${tag//\//-}"
+            gh release download \
+              --repo "${GITHUB_REPOSITORY}" \
+              --pattern '*.bin' \
+              --pattern 'SHA256SUMS' \
+              --dir pages-dist/firmware/latest \
+              --clobber
+            (cd pages-dist/firmware/latest && sha256sum --ignore-missing -c SHA256SUMS)
+            (cd pages-dist/firmware/latest && sha256sum *.bin > SHA256SUMS)
+            python3 - <<'PY' pages-dist/firmware/latest "${tag}" "${file_tag}"
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          out = Path(sys.argv[1])
+          tag = sys.argv[2]
+          file_tag = sys.argv[3]
+
+          def write_json(name, data):
+              with (out / name).open("w", encoding="utf-8") as file:
+                  json.dump(data, file, indent=2)
+                  file.write("\n")
+
+          def is_merged(data):
+              return len(data) > 0x10000 and data[0x1000] == 0xE9 and data[0x10000] == 0xE9
+
+          def firmware_file(slug):
+              candidates = [
+                  f"m45-core-{file_tag}-{slug}.bin",
+                  f"m45-core-{file_tag}-{slug}-merged.bin",
+              ]
+              for name in candidates:
+                  path = out / name
+                  if not path.exists():
+                      continue
+                  data = path.read_bytes()
+                  if is_merged(data):
+                      return {
+                          "path": name,
+                          "sha256": hashlib.sha256(data).hexdigest(),
+                          "size": len(data),
+                      }
+              raise FileNotFoundError(f"missing merged flash image for {slug}")
+
+          write_json(
+              "manifest.json",
+              {
+                  "version": tag,
+                  "settingsRange": {"start": 0x9000, "end": 0xF000},
+                  "firmware": {
+                      "oled": {
+                          "label": "OLED",
+                          **firmware_file("oled"),
+                      },
+                      "lcd": {
+                          "label": "LCD",
+                          **firmware_file("ideaspark-19-lcd"),
+                      },
+                  },
+              },
+          )
+          PY
+          fi
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs
+          path: pages-dist
 
       - name: Deploy Pages
         id: deployment

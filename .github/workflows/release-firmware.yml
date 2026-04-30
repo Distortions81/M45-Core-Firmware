@@ -8,6 +8,12 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -46,16 +52,11 @@ jobs:
 
           oled_bin="dist/m45-core-${file_tag}-oled.bin"
           lcd_bin="dist/m45-core-${file_tag}-ideaspark-19-lcd.bin"
-          oled_merged_bin="dist/m45-core-${file_tag}-oled-merged.bin"
-          lcd_merged_bin="dist/m45-core-${file_tag}-ideaspark-19-lcd-merged.bin"
           release_notes="dist/RELEASE_NOTES.md"
-
-          cp build-oled/m45-core.bin "${oled_bin}"
-          cp build-lcd/m45-core.bin "${lcd_bin}"
 
           . "${IDF_PATH}/export.sh"
           python3 -m esptool --chip esp32 merge_bin \
-            -o "${oled_merged_bin}" \
+            -o "${oled_bin}" \
             --flash_mode dio \
             --flash_freq 40m \
             --flash_size 4MB \
@@ -63,7 +64,7 @@ jobs:
             0x8000 build-oled/partition_table/partition-table.bin \
             0x10000 build-oled/m45-core.bin
           python3 -m esptool --chip esp32 merge_bin \
-            -o "${lcd_merged_bin}" \
+            -o "${lcd_bin}" \
             --flash_mode dio \
             --flash_freq 40m \
             --flash_size 4MB \
@@ -76,8 +77,6 @@ jobs:
             sha256sum \
               "$(basename "${oled_bin}")" \
               "$(basename "${lcd_bin}")" \
-              "$(basename "${oled_merged_bin}")" \
-              "$(basename "${lcd_merged_bin}")" \
               > SHA256SUMS
           )
 
@@ -90,18 +89,16 @@ jobs:
             printf '\n'
             printf '%s\n' '## Release Assets'
             printf '\n'
-            printf '%s\n' "- \`$(basename "${oled_merged_bin}")\`: OLED firmware for direct flashing"
-            printf '%s\n' "- \`$(basename "${lcd_merged_bin}")\`: ideaspark ESP32 1.9 inch LCD firmware for direct flashing"
+            printf '%s\n' "- \`$(basename "${oled_bin}")\`: OLED flash image at 0x0"
+            printf '%s\n' "- \`$(basename "${lcd_bin}")\`: ideaspark ESP32 1.9 inch LCD flash image at 0x0"
             printf '%s\n' '- `SHA256SUMS`: checksums for release binaries'
             printf '\n'
-            printf '%s\n' 'The non-merged `.bin` files are app binaries for developer ESP-IDF workflows.'
+            printf '%s\n' 'The browser flasher can reset only the settings area or preserve existing settings while using these same images.'
           } > "${release_notes}"
 
           {
             echo "oled_bin=${oled_bin}"
             echo "lcd_bin=${lcd_bin}"
-            echo "oled_merged_bin=${oled_merged_bin}"
-            echo "lcd_merged_bin=${lcd_merged_bin}"
             echo "release_notes=${release_notes}"
             echo "checksums=dist/SHA256SUMS"
           } >> "${GITHUB_OUTPUT}"
@@ -113,8 +110,6 @@ jobs:
           path: |
             ${{ steps.package.outputs.oled_bin }}
             ${{ steps.package.outputs.lcd_bin }}
-            ${{ steps.package.outputs.oled_merged_bin }}
-            ${{ steps.package.outputs.lcd_merged_bin }}
             ${{ steps.package.outputs.checksums }}
 
       - name: Attach binaries to GitHub release
@@ -125,6 +120,95 @@ jobs:
           files: |
             ${{ steps.package.outputs.oled_bin }}
             ${{ steps.package.outputs.lcd_bin }}
-            ${{ steps.package.outputs.oled_merged_bin }}
-            ${{ steps.package.outputs.lcd_merged_bin }}
             ${{ steps.package.outputs.checksums }}
+
+  deploy-pages:
+    name: Deploy web flasher
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download release firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-firmware
+          path: release-firmware
+
+      - name: Build Pages content
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pages-dist/firmware/latest
+          cp -R docs/. pages-dist/
+          find release-firmware -type f -name '*.bin' -exec cp {} pages-dist/firmware/latest/ \;
+          find release-firmware -type f -name 'SHA256SUMS' -exec cp {} pages-dist/firmware/latest/ \;
+          test "$(find pages-dist/firmware/latest -type f -name '*.bin' | wc -l)" -ge 2
+          test -f pages-dist/firmware/latest/SHA256SUMS
+          (cd pages-dist/firmware/latest && sha256sum --ignore-missing -c SHA256SUMS)
+          tag="${GITHUB_REF_NAME}"
+          file_tag="${tag//\//-}"
+          python3 - <<'PY' pages-dist/firmware/latest "${tag}" "${file_tag}"
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          out = Path(sys.argv[1])
+          tag = sys.argv[2]
+          file_tag = sys.argv[3]
+
+          def write_json(name, data):
+              with (out / name).open("w", encoding="utf-8") as file:
+                  json.dump(data, file, indent=2)
+                  file.write("\n")
+
+          def firmware_file(slug):
+              name = f"m45-core-{file_tag}-{slug}.bin"
+              data = (out / name).read_bytes()
+              if len(data) <= 0x10000 or data[0x1000] != 0xE9 or data[0x10000] != 0xE9:
+                  raise ValueError(f"{name} is not a merged ESP32 flash image")
+              return {
+                  "path": name,
+                  "sha256": hashlib.sha256(data).hexdigest(),
+                  "size": len(data),
+              }
+
+          write_json(
+              "manifest.json",
+              {
+                  "version": tag,
+                  "settingsRange": {"start": 0x9000, "end": 0xF000},
+                  "firmware": {
+                      "oled": {
+                          "label": "OLED",
+                          **firmware_file("oled"),
+                      },
+                      "lcd": {
+                          "label": "LCD",
+                          **firmware_file("ideaspark-19-lcd"),
+                      },
+                  },
+              },
+          )
+          PY
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-dist
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

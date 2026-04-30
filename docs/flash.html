@@ -4,10 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>M45 Core Firmware Flasher</title>
-    <script
-      type="module"
-      src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
-    ></script>
     <style>
       :root {
         color-scheme: light dark;
@@ -17,8 +13,11 @@
         --line: #cfd8e3;
         --panel: #ffffff;
         --accent: #1463d8;
-        --accent-dark: #0d4fab;
-        --warn: #8a4b08;
+        --accent-soft: #e8f0ff;
+        --warn-bg: #fff5db;
+        --warn-fg: #6f4600;
+        --danger: #b42318;
+        --ok: #197a45;
       }
 
       @media (prefers-color-scheme: dark) {
@@ -29,8 +28,11 @@
           --line: #344253;
           --panel: #182230;
           --accent: #62a0ff;
-          --accent-dark: #8fbcff;
-          --warn: #ffd18a;
+          --accent-soft: #1f3555;
+          --warn-bg: #33290f;
+          --warn-fg: #ffd98f;
+          --danger: #ff8a80;
+          --ok: #7ed9a2;
         }
       }
 
@@ -40,138 +42,186 @@
 
       body {
         margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         background: var(--bg);
         color: var(--fg);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       main {
-        width: min(960px, calc(100% - 32px));
+        width: min(720px, calc(100% - 28px));
         margin: 0 auto;
-        padding: 32px 0 48px;
+        padding: 28px 0 44px;
       }
 
       header {
-        margin-bottom: 24px;
+        margin-bottom: 18px;
       }
 
       h1 {
         margin: 0 0 8px;
-        font-size: clamp(2rem, 7vw, 3.6rem);
+        font-size: clamp(2rem, 7vw, 3.4rem);
         line-height: 1;
         letter-spacing: 0;
       }
 
       h2 {
-        margin: 0 0 8px;
-        font-size: 1.25rem;
+        margin: 0;
+        font-size: 1.15rem;
         letter-spacing: 0;
       }
 
       p {
         margin: 0;
         color: var(--muted);
-        line-height: 1.55;
-      }
-
-      a {
-        color: var(--accent-dark);
-      }
-
-      .layout {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-      }
-
-      .panel,
-      .notes {
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: var(--panel);
+        line-height: 1.5;
       }
 
       .panel {
-        display: flex;
-        min-height: 236px;
-        flex-direction: column;
-        justify-content: space-between;
-        gap: 20px;
+        display: grid;
+        gap: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
         padding: 20px;
       }
 
-      .variant {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+      .section {
+        display: grid;
+        gap: 10px;
       }
 
-      .meta {
+      .firmware-version {
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 12px;
+        gap: 12px;
+        align-items: baseline;
+        justify-content: space-between;
       }
 
-      .pill {
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 4px 10px;
+      .firmware-version span {
         color: var(--muted);
-        font-size: 0.85rem;
       }
 
-      .installer {
+      .firmware-version strong {
+        color: var(--fg);
+        font-size: 1.1rem;
+      }
+
+      .choice-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .choice {
+        display: grid;
+        gap: 4px;
+        min-height: 76px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        cursor: pointer;
+      }
+
+      .choice:has(input:checked) {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .choice input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .choice strong {
+        color: var(--fg);
+      }
+
+      .choice span {
+        color: var(--muted);
+      }
+
+      .settings-choice {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .settings-choice input {
+        margin-top: 4px;
+      }
+
+      .settings-choice strong {
+        color: var(--fg);
+      }
+
+      .usb-note {
+        border-radius: 8px;
+        background: var(--warn-bg);
+        color: var(--warn-fg);
+        padding: 12px;
+        line-height: 1.45;
+      }
+
+      .usb-note strong {
+        color: inherit;
+      }
+
+      .flash-action {
+        display: grid;
+        gap: 10px;
+      }
+
+      #flash-button {
+        width: 100%;
         min-height: 48px;
-      }
-
-      esp-web-install-button {
-        --esp-tools-button-color: var(--accent);
-        --esp-tools-button-text-color: #ffffff;
-        --esp-tools-button-border-radius: 6px;
-      }
-
-      button[slot="activate"] {
-        min-height: 44px;
         border: 0;
         border-radius: 6px;
         padding: 0 18px;
         background: var(--accent);
         color: #ffffff;
+        cursor: pointer;
         font: inherit;
         font-weight: 700;
-        cursor: pointer;
       }
 
-      .fallback {
-        color: var(--warn);
+      #flash-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
       }
 
-      .notes {
-        margin-top: 16px;
-        padding: 18px 20px;
-      }
-
-      .notes ul {
-        margin: 10px 0 0;
-        padding-left: 20px;
-        color: var(--muted);
-        line-height: 1.55;
+      progress {
+        width: 100%;
+        height: 10px;
+        accent-color: var(--accent);
       }
 
       .status {
-        margin-top: 16px;
-        color: var(--muted);
         min-height: 1.5em;
+        color: var(--muted);
       }
 
-      @media (max-width: 760px) {
+      .status.ok {
+        color: var(--ok);
+      }
+
+      .status.error {
+        color: var(--danger);
+        font-weight: 700;
+      }
+
+      @media (max-width: 560px) {
         main {
-          width: min(100% - 24px, 960px);
-          padding-top: 24px;
+          width: min(100% - 20px, 720px);
+          padding-top: 22px;
         }
 
-        .layout {
+        .choice-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -181,183 +231,343 @@
     <main>
       <header>
         <h1>M45 Core Flasher</h1>
-        <p>Flash the latest release directly from your browser with ESP Web Tools.</p>
+        <p>Choose the display, connect the device by USB, then flash.</p>
       </header>
 
-      <section class="layout" aria-label="Firmware variants">
-        <article class="panel">
-          <div class="variant">
-            <h2>OLED Firmware</h2>
-            <p>Default ESP32-WROOM-32 build for SSD1306 OLED M45 Core devices.</p>
-            <div class="meta">
-              <span class="pill">ESP32</span>
-              <span class="pill">OLED</span>
-            </div>
-          </div>
-          <div class="installer">
-            <p id="oled-checksum" class="status">Waiting for checksum verification...</p>
-            <esp-web-install-button id="oled-install">
-              <button slot="activate">Install OLED Firmware</button>
-              <span slot="unsupported" class="fallback">Use Chrome or Edge on desktop.</span>
-              <span slot="not-allowed" class="fallback">Open this page over HTTPS.</span>
-            </esp-web-install-button>
-          </div>
-        </article>
+      <section class="panel" aria-label="Firmware flasher">
+        <div class="firmware-version" aria-live="polite">
+          <span>Firmware version</span>
+          <strong id="firmware-version">Checking...</strong>
+        </div>
 
-        <article class="panel">
-          <div class="variant">
-            <h2>LCD Firmware</h2>
-            <p>ideaspark ESP32 1.9 inch ST7789 LCD build.</p>
-            <div class="meta">
-              <span class="pill">ESP32</span>
-              <span class="pill">ST7789 LCD</span>
-            </div>
+        <div class="section">
+          <h2>Display</h2>
+          <div class="choice-grid">
+            <label class="choice">
+              <input type="radio" name="display" value="oled" checked>
+              <strong>OLED</strong>
+              <span>Default M45 Core screen</span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="display" value="lcd">
+              <strong>LCD</strong>
+              <span>ideaspark 1.9 inch screen</span>
+            </label>
           </div>
-          <div class="installer">
-            <p id="lcd-checksum" class="status">Waiting for checksum verification...</p>
-            <esp-web-install-button id="lcd-install">
-              <button slot="activate">Install LCD Firmware</button>
-              <span slot="unsupported" class="fallback">Use Chrome or Edge on desktop.</span>
-              <span slot="not-allowed" class="fallback">Open this page over HTTPS.</span>
-            </esp-web-install-button>
-          </div>
-        </article>
+        </div>
+
+        <div class="section">
+          <h2>Settings</h2>
+          <label class="settings-choice">
+            <input id="reset-settings" type="checkbox" checked>
+            <span><strong>Reset WiFi and pool settings.</strong> Uncheck to keep WiFi and pool settings when upgrading.</span>
+          </label>
+        </div>
+
+        <div class="usb-note">
+          <strong>When your browser asks for a USB device, choose the ESP32 serial port.</strong>
+          It may be named CP210x, CH340, USB Serial, UART, or COM on Windows.
+        </div>
+
+        <div class="flash-action">
+          <button id="flash-button" type="button" disabled>Flash Firmware</button>
+          <progress id="flash-progress" max="100" value="0" hidden></progress>
+          <p id="status" class="status">Checking firmware files...</p>
+        </div>
       </section>
-
-      <section class="notes" aria-label="Flashing notes">
-        <h2>Before Flashing</h2>
-        <ul>
-          <li>Use a USB data cable and select the device serial port when prompted.</li>
-          <li>Hold the board BOOT button while connecting if the browser cannot start flashing.</li>
-          <li>New installs may erase saved Wi-Fi and miner settings.</li>
-        </ul>
-      </section>
-
-      <p id="status" class="status">Loading latest release assets...</p>
     </main>
 
-    <script>
-      const repo = "Distortions81/M45-Core-Firmware";
-      const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
+    <script type="module">
+      import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.6.0/bundle.js";
+
+      const MANIFEST_PATH = "firmware/latest/manifest.json";
+      const DEFAULT_SETTINGS_RANGE = { start: 0x9000, end: 0xF000 };
+      const BOOTLOADER_OFFSET = 0x1000;
+      const PARTITION_TABLE_OFFSET = 0x8000;
+      const APP_OFFSET = 0x10000;
+      const FLASH_BAUD = 921600;
+      const ROM_BAUD = 115200;
+
+      const versionEl = document.querySelector("#firmware-version");
       const statusEl = document.querySelector("#status");
-      const oledChecksumEl = document.querySelector("#oled-checksum");
-      const lcdChecksumEl = document.querySelector("#lcd-checksum");
+      const progressEl = document.querySelector("#flash-progress");
+      const flashButtonEl = document.querySelector("#flash-button");
+      const resetSettingsEl = document.querySelector("#reset-settings");
+      const displayInputs = Array.from(document.querySelectorAll("input[name='display']"));
 
-      function findAsset(release, suffix) {
-        return release.assets.find((asset) => asset.name.endsWith(suffix));
+      let manifest = null;
+      let settingsRange = DEFAULT_SETTINGS_RANGE;
+      let firmwareFiles = {};
+      let busy = false;
+
+      function selectedDisplay() {
+        return document.querySelector("input[name='display']:checked").value;
       }
 
-      function checksumName(filename) {
-        return filename.replace(/^\*/, "");
+      function setStatus(message, type = "") {
+        statusEl.textContent = message;
+        statusEl.classList.toggle("ok", type === "ok");
+        statusEl.classList.toggle("error", type === "error");
       }
 
-      function parseChecksums(text) {
-        const checksums = new Map();
-        for (const line of text.split(/\r?\n/)) {
-          const trimmed = line.trim();
-          if (!trimmed) {
-            continue;
-          }
-          const match = trimmed.match(/^([a-fA-F0-9]{64})\s+(.+)$/);
-          if (!match) {
-            throw new Error("SHA256SUMS contains an invalid line.");
-          }
-          checksums.set(checksumName(match[2]), match[1].toLowerCase());
-        }
-        return checksums;
+      function setProgress(value, visible = true) {
+        progressEl.hidden = !visible;
+        progressEl.value = Math.max(0, Math.min(100, value));
       }
 
-      function toHex(buffer) {
-        return Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      function readyToFlash() {
+        return Boolean(manifest && firmwareFiles[selectedDisplay()] && !busy);
       }
 
-      async function fetchText(url) {
-        const response = await fetch(url);
+      function refreshControls() {
+        const enabled = readyToFlash();
+        flashButtonEl.disabled = !enabled;
+        displayInputs.forEach((input) => {
+          input.disabled = busy;
+        });
+        resetSettingsEl.disabled = busy;
+      }
+
+      function manifestUrl() {
+        return new URL(MANIFEST_PATH, window.location.href);
+      }
+
+      function firmwareUrl(path) {
+        return new URL(path, manifestUrl()).toString();
+      }
+
+      async function sha256Hex(data) {
+        const digest = await crypto.subtle.digest("SHA-256", data);
+        return Array.from(new Uint8Array(digest))
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("");
+      }
+
+      async function loadFirmwareFile(key, fileInfo) {
+        setStatus(`Verifying ${fileInfo.label} firmware...`);
+        const response = await fetch(firmwareUrl(fileInfo.path), { cache: "no-store" });
         if (!response.ok) {
-          throw new Error(`Download failed with HTTP ${response.status}`);
-        }
-        return response.text();
-      }
-
-      async function fetchArrayBuffer(url) {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Download failed with HTTP ${response.status}`);
-        }
-        return response.arrayBuffer();
-      }
-
-      async function verifyAsset(asset, checksums, statusElement) {
-        const expected = checksums.get(asset.name);
-        if (!expected) {
-          throw new Error(`SHA256SUMS has no entry for ${asset.name}.`);
+          throw new Error(`Failed to download ${fileInfo.path} with HTTP ${response.status}`);
         }
 
-        statusElement.textContent = `Checking ${asset.name}...`;
-        const bytes = await fetchArrayBuffer(asset.browser_download_url);
-        const actual = toHex(await crypto.subtle.digest("SHA-256", bytes));
-        if (actual !== expected) {
-          throw new Error(`Checksum mismatch for ${asset.name}.`);
+        const buffer = await response.arrayBuffer();
+        const data = new Uint8Array(buffer);
+        if (fileInfo.size && data.length !== fileInfo.size) {
+          throw new Error(`${fileInfo.path} has the wrong size`);
         }
-        statusElement.textContent = `Checksum passed: ${asset.name}`;
-      }
 
-      function manifestFor(name, version, assetUrl) {
-        return {
-          name,
-          version,
-          new_install_prompt_erase: true,
-          builds: [
-            {
-              chipFamily: "ESP32",
-              parts: [{ path: assetUrl, offset: 0 }]
-            }
-          ]
+        const actualSha = await sha256Hex(data);
+        if (actualSha !== fileInfo.sha256.toLowerCase()) {
+          throw new Error(`${fileInfo.path} checksum did not match`);
+        }
+
+        firmwareFiles[key] = {
+          ...fileInfo,
+          data,
         };
       }
 
-      function attachManifest(buttonId, manifest) {
-        const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        document.querySelector(buttonId).manifest = url;
-      }
+      async function loadManifestAndFirmware() {
+        if (!window.isSecureContext) {
+          throw new Error("Open this page over HTTPS to use Web Serial.");
+        }
+        if (!("serial" in navigator)) {
+          throw new Error("Use Chrome or Edge on desktop. This browser does not support Web Serial.");
+        }
+        if (!crypto.subtle) {
+          throw new Error("This browser cannot verify firmware checksums.");
+        }
 
-      async function loadLatestRelease() {
-        const response = await fetch(apiUrl, { headers: { Accept: "application/vnd.github+json" } });
+        const response = await fetch(manifestUrl(), { cache: "no-store" });
         if (!response.ok) {
-          throw new Error(`GitHub release lookup failed with HTTP ${response.status}`);
+          throw new Error(`Firmware manifest failed to load with HTTP ${response.status}`);
         }
 
-        const release = await response.json();
-        const oledAsset = findAsset(release, "-oled-merged.bin");
-        const lcdAsset = findAsset(release, "-ideaspark-19-lcd-merged.bin");
-        const checksumsAsset = findAsset(release, "SHA256SUMS");
+        manifest = await response.json();
+        versionEl.textContent = manifest.version;
+        settingsRange = manifest.settingsRange || DEFAULT_SETTINGS_RANGE;
 
-        if (!oledAsset || !lcdAsset || !checksumsAsset) {
-          throw new Error("Latest release does not include both merged firmware images and SHA256SUMS.");
+        const entries = Object.entries(manifest.firmware || {});
+        if (!entries.length) {
+          throw new Error("Firmware manifest does not list any files.");
         }
 
-        statusEl.textContent = `Verifying release ${release.tag_name}...`;
-        const checksums = parseChecksums(await fetchText(checksumsAsset.browser_download_url));
-        await Promise.all([
-          verifyAsset(oledAsset, checksums, oledChecksumEl),
-          verifyAsset(lcdAsset, checksums, lcdChecksumEl)
-        ]);
+        for (const [key, fileInfo] of entries) {
+          await loadFirmwareFile(key, fileInfo);
+        }
 
-        attachManifest(
-          "#oled-install",
-          manifestFor("M45 Core OLED", release.tag_name, oledAsset.browser_download_url)
-        );
-        attachManifest(
-          "#lcd-install",
-          manifestFor("M45 Core ideaspark 1.9 inch LCD", release.tag_name, lcdAsset.browser_download_url)
-        );
-
-        statusEl.innerHTML = `Ready to flash <a href="${release.html_url}">${release.tag_name}</a>.`;
+        setStatus("Checksums verified. Ready to flash.", "ok");
+        refreshControls();
       }
 
-      loadLatestRelease().catch((error) => {
-        statusEl.textContent = error.message;
+      function firmwareParts(data, resetSettings) {
+        const start = settingsRange.start;
+        const end = settingsRange.end;
+        if (
+          !Number.isInteger(start) ||
+          !Number.isInteger(end) ||
+          start < 0 ||
+          end <= start ||
+          start % 0x1000 !== 0 ||
+          end % 0x1000 !== 0 ||
+          end > data.length
+        ) {
+          throw new Error("Firmware settings range is invalid.");
+        }
+        if (
+          data.length <= APP_OFFSET ||
+          data[BOOTLOADER_OFFSET] !== 0xE9 ||
+          data[PARTITION_TABLE_OFFSET] !== 0xAA ||
+          data[APP_OFFSET] !== 0xE9
+        ) {
+          throw new Error("Firmware image does not match the expected ESP-IDF flash layout.");
+        }
+
+        const parts = [
+          { data: data.slice(BOOTLOADER_OFFSET, PARTITION_TABLE_OFFSET), address: BOOTLOADER_OFFSET },
+          { data: data.slice(PARTITION_TABLE_OFFSET, start), address: PARTITION_TABLE_OFFSET },
+        ];
+
+        if (resetSettings) {
+          parts.push({
+            data: new Uint8Array(end - start).fill(0xFF),
+            address: start,
+          });
+        }
+
+        parts.push({ data: data.slice(APP_OFFSET), address: APP_OFFSET });
+        return parts.filter((part) => part.data.length > 0);
+      }
+
+      function updateWriteProgress(parts, fileIndex, written, total) {
+        if (!parts.length || !total) {
+          return;
+        }
+
+        if (!parts.progress) {
+          parts.progress = new Array(parts.length).fill(0);
+          parts.totalBytes = parts.reduce((sum, part) => sum + part.data.length, 0);
+        }
+
+        parts.progress[fileIndex] = written / total;
+        const completedBytes = parts.progress.reduce(
+          (sum, partProgress, index) => sum + partProgress * parts[index].data.length,
+          0,
+        );
+        const percent = Math.round((completedBytes / parts.totalBytes) * 100);
+        setProgress(percent);
+        setStatus(`Writing firmware... ${percent}%`);
+      }
+
+      async function disconnectTransport(transport) {
+        if (!transport) {
+          return;
+        }
+        try {
+          await transport.disconnect();
+        } catch (_) {
+          // The port may already be closed after reset.
+        }
+      }
+
+      async function flashFirmware() {
+        const selected = selectedDisplay();
+        const file = firmwareFiles[selected];
+        if (!file || busy) {
+          return;
+        }
+
+        busy = true;
+        refreshControls();
+        setProgress(0);
+
+        let transport = null;
+        try {
+          setStatus("Choose the ESP32 serial port in the browser prompt.");
+          const port = await navigator.serial.requestPort();
+          transport = new Transport(port, false);
+          const esploader = new ESPLoader({
+            transport,
+            baudrate: FLASH_BAUD,
+            romBaudrate: ROM_BAUD,
+            debugLogging: false,
+            terminal: {
+              clean() {},
+              write() {},
+              writeLine() {},
+            },
+          });
+
+          setStatus("Connecting to ESP32...");
+          await esploader.main();
+          if (esploader.chip.CHIP_NAME !== "ESP32") {
+            throw new Error(`Connected chip is ${esploader.chip.CHIP_NAME}, not ESP32.`);
+          }
+
+          const resetSettings = resetSettingsEl.checked;
+          const parts = firmwareParts(file.data, resetSettings);
+
+          if (resetSettings) {
+            setStatus("Resetting settings area and writing firmware...");
+          } else {
+            setStatus("Writing firmware and keeping settings...");
+          }
+
+          await esploader.writeFlash({
+            fileArray: parts,
+            flashSize: "4MB",
+            flashMode: "dio",
+            flashFreq: "40m",
+            eraseAll: false,
+            compress: true,
+            reportProgress: (fileIndex, written, total) => {
+              updateWriteProgress(parts, fileIndex, written, total);
+            },
+          });
+
+          setStatus("Restarting device...");
+          let resetWorked = true;
+          try {
+            await esploader.after("hard_reset");
+          } catch (_) {
+            resetWorked = false;
+          }
+          await disconnectTransport(transport);
+          transport = null;
+          setProgress(100);
+          setStatus(
+            `${resetSettings
+              ? "Flash complete. WiFi and pool settings were reset."
+              : "Flash complete. WiFi and pool settings were kept."} ${
+              resetWorked
+                ? "The device should restart now."
+                : "Press RESET or unplug and reconnect USB to restart the device."
+            }`,
+            "ok",
+          );
+        } catch (error) {
+          await disconnectTransport(transport);
+          const message = error.name === "NotFoundError"
+            ? "No USB device was selected."
+            : error.message || String(error);
+          setStatus(`Flash failed: ${message}`, "error");
+          setProgress(0, false);
+        } finally {
+          busy = false;
+          refreshControls();
+        }
+      }
+
+      displayInputs.forEach((input) => input.addEventListener("change", refreshControls));
+      resetSettingsEl.addEventListener("change", refreshControls);
+      flashButtonEl.addEventListener("click", flashFirmware);
+
+      loadManifestAndFirmware().catch((error) => {
+        manifest = null;
+        firmwareFiles = {};
+        versionEl.textContent = "Unavailable";
+        flashButtonEl.disabled = true;
+        setStatus(`INVALID FIRMWARE FILES: ${error.message}`, "error");
       });
     </script>
   </body>
