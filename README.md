@@ -6,9 +6,9 @@
 - Source size: roughly 10k LoC
 - Hardware: ESP32-WROOM-32
 
-| OLED Display | Web Stats | Web Settings |
-| --- | --- | --- |
-| ![M45 Core OLED display](oled.png) | ![M45 Core stats web UI](stats.png) | ![M45 Core settings web UI](settings.png) |
+| OLED Display | ideaspark 1.9 inch LCD | Web Stats | Web Settings |
+| --- | --- | --- | --- |
+| ![M45 Core OLED display](oled.png) | ![M45 Core ideaspark 1.9 inch LCD display](lcd.png) | ![M45 Core stats web UI](stats.png) | ![M45 Core settings web UI](settings.png) |
 
 ## Requirements
 
