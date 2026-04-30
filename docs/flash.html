@@ -287,6 +287,7 @@
       const APP_OFFSET = 0x10000;
       const FLASH_BAUD = 921600;
       const ROM_BAUD = 115200;
+      const POST_FLASH_RESET_SEQUENCE = "D0|R1|W100|R0|W100";
 
       const versionEl = document.querySelector("#firmware-version");
       const statusEl = document.querySelector("#status");
@@ -528,7 +529,7 @@
           setStatus("Restarting device...");
           let resetWorked = true;
           try {
-            await esploader.after("hard_reset");
+            await esploader.after("custom_reset", false, POST_FLASH_RESET_SEQUENCE);
           } catch (_) {
             resetWorked = false;
           }
