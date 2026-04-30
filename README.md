@@ -1,5 +1,11 @@
 ## M45-Core-Firmware
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/Distortions81/M45-Core-Firmware?sort=semver)](https://github.com/Distortions81/M45-Core-Firmware/releases)
+[![Release firmware](https://github.com/Distortions81/M45-Core-Firmware/actions/workflows/release-firmware.yml/badge.svg)](https://github.com/Distortions81/M45-Core-Firmware/actions/workflows/release-firmware.yml)
+[![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.5.3-red)](https://github.com/espressif/esp-idf/releases/tag/v5.5.3)
+[![Target: ESP32](https://img.shields.io/badge/target-ESP32-blue)](https://www.espressif.com/en/products/socs/esp32)
+
 - Average mining speed: 620 kH/s, April 2026.
 - 740 KiB binary
 - 108 KiB IRAM, 62 KiB DRAM
@@ -36,3 +42,11 @@ ideaspark ESP32 1.9 inch LCD firmware:
 ```sh
 ./scripts/build-firmware.sh --ideaspark-19-lcd
 ```
+
+## Flash
+
+The easiest path for users is the
+[browser flasher](https://distortions81.github.io/M45-Core-Firmware/).
+
+Release tags also include `m45-core-<tag>-flash-bundle.zip`, which contains both
+merged firmware images and a cross-platform Python flashing helper.

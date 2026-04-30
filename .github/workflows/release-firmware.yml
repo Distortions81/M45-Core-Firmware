@@ -1,0 +1,123 @@
+name: Release firmware
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release binaries
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v5.5.3
+      options: --user root
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install LCD build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends fonts-dejavu-core python3-pil zip
+
+      - name: Build OLED firmware
+        run: ./scripts/build-firmware.sh --clean --build-dir build-oled
+
+      - name: Build LCD firmware
+        run: ./scripts/build-firmware.sh --clean --build-dir build-lcd --ideaspark-19-lcd
+
+      - name: Package release binaries
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME:-manual}"
+          file_tag="${tag//\//-}"
+          mkdir -p dist
+
+          oled_bin="dist/m45-core-${file_tag}-oled.bin"
+          lcd_bin="dist/m45-core-${file_tag}-ideaspark-19-lcd.bin"
+          oled_merged_bin="dist/m45-core-${file_tag}-oled-merged.bin"
+          lcd_merged_bin="dist/m45-core-${file_tag}-ideaspark-19-lcd-merged.bin"
+          flash_bundle="dist/m45-core-${file_tag}-flash-bundle.zip"
+
+          cp build-oled/m45-core.bin "${oled_bin}"
+          cp build-lcd/m45-core.bin "${lcd_bin}"
+
+          . "${IDF_PATH}/export.sh"
+          python3 -m esptool --chip esp32 merge_bin \
+            -o "${oled_merged_bin}" \
+            --flash_mode dio \
+            --flash_freq 40m \
+            --flash_size 4MB \
+            0x1000 build-oled/bootloader/bootloader.bin \
+            0x8000 build-oled/partition_table/partition-table.bin \
+            0x10000 build-oled/m45-core.bin
+          python3 -m esptool --chip esp32 merge_bin \
+            -o "${lcd_merged_bin}" \
+            --flash_mode dio \
+            --flash_freq 40m \
+            --flash_size 4MB \
+            0x1000 build-lcd/bootloader/bootloader.bin \
+            0x8000 build-lcd/partition_table/partition-table.bin \
+            0x10000 build-lcd/m45-core.bin
+
+          (
+            cd dist
+            sha256sum \
+              "$(basename "${oled_bin}")" \
+              "$(basename "${lcd_bin}")" \
+              "$(basename "${oled_merged_bin}")" \
+              "$(basename "${lcd_merged_bin}")" \
+              > SHA256SUMS
+          )
+
+          bundle_dir="$(mktemp -d)"
+          cp "${oled_merged_bin}" "${bundle_dir}/"
+          cp "${lcd_merged_bin}" "${bundle_dir}/"
+          cp dist/SHA256SUMS "${bundle_dir}/"
+          cp scripts/flash-release.py "${bundle_dir}/"
+          cp docs/FLASHING.md "${bundle_dir}/README.md"
+          (cd "${bundle_dir}" && zip -9 -r "${GITHUB_WORKSPACE}/${flash_bundle}" .)
+
+          {
+            echo "oled_bin=${oled_bin}"
+            echo "lcd_bin=${lcd_bin}"
+            echo "oled_merged_bin=${oled_merged_bin}"
+            echo "lcd_merged_bin=${lcd_merged_bin}"
+            echo "flash_bundle=${flash_bundle}"
+            echo "checksums=dist/SHA256SUMS"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-firmware
+          path: |
+            ${{ steps.package.outputs.oled_bin }}
+            ${{ steps.package.outputs.lcd_bin }}
+            ${{ steps.package.outputs.oled_merged_bin }}
+            ${{ steps.package.outputs.lcd_merged_bin }}
+            ${{ steps.package.outputs.flash_bundle }}
+            ${{ steps.package.outputs.checksums }}
+
+      - name: Attach binaries to GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.package.outputs.oled_bin }}
+            ${{ steps.package.outputs.lcd_bin }}
+            ${{ steps.package.outputs.oled_merged_bin }}
+            ${{ steps.package.outputs.lcd_merged_bin }}
+            ${{ steps.package.outputs.flash_bundle }}
+            ${{ steps.package.outputs.checksums }}

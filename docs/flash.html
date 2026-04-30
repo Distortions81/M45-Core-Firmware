@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>M45 Core Firmware Flasher</title>
+    <script
+      type="module"
+      src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
+    ></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f8fb;
+        --fg: #17212f;
+        --muted: #5c6a7d;
+        --line: #cfd8e3;
+        --panel: #ffffff;
+        --accent: #1463d8;
+        --accent-dark: #0d4fab;
+        --warn: #8a4b08;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111820;
+          --fg: #f4f7fb;
+          --muted: #b2bfce;
+          --line: #344253;
+          --panel: #182230;
+          --accent: #62a0ff;
+          --accent-dark: #8fbcff;
+          --warn: #ffd18a;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+
+      main {
+        width: min(960px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+      }
+
+      header {
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(2rem, 7vw, 3.6rem);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 8px;
+        font-size: 1.25rem;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      a {
+        color: var(--accent-dark);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .panel,
+      .notes {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .panel {
+        display: flex;
+        min-height: 236px;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 20px;
+      }
+
+      .variant {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .pill {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 10px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .installer {
+        min-height: 48px;
+      }
+
+      esp-web-install-button {
+        --esp-tools-button-color: var(--accent);
+        --esp-tools-button-text-color: #ffffff;
+        --esp-tools-button-border-radius: 6px;
+      }
+
+      button[slot="activate"] {
+        min-height: 44px;
+        border: 0;
+        border-radius: 6px;
+        padding: 0 18px;
+        background: var(--accent);
+        color: #ffffff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .fallback {
+        color: var(--warn);
+      }
+
+      .notes {
+        margin-top: 16px;
+        padding: 18px 20px;
+      }
+
+      .notes ul {
+        margin: 10px 0 0;
+        padding-left: 20px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .status {
+        margin-top: 16px;
+        color: var(--muted);
+        min-height: 1.5em;
+      }
+
+      @media (max-width: 760px) {
+        main {
+          width: min(100% - 24px, 960px);
+          padding-top: 24px;
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>M45 Core Flasher</h1>
+        <p>Flash the latest release directly from your browser with ESP Web Tools.</p>
+      </header>
+
+      <section class="layout" aria-label="Firmware variants">
+        <article class="panel">
+          <div class="variant">
+            <h2>OLED Firmware</h2>
+            <p>Default ESP32-WROOM-32 build for SSD1306 OLED M45 Core devices.</p>
+            <div class="meta">
+              <span class="pill">ESP32</span>
+              <span class="pill">OLED</span>
+            </div>
+          </div>
+          <div class="installer">
+            <esp-web-install-button id="oled-install">
+              <button slot="activate">Install OLED Firmware</button>
+              <span slot="unsupported" class="fallback">Use Chrome or Edge on desktop.</span>
+              <span slot="not-allowed" class="fallback">Open this page over HTTPS.</span>
+            </esp-web-install-button>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="variant">
+            <h2>LCD Firmware</h2>
+            <p>ideaspark ESP32 1.9 inch ST7789 LCD build.</p>
+            <div class="meta">
+              <span class="pill">ESP32</span>
+              <span class="pill">ST7789 LCD</span>
+            </div>
+          </div>
+          <div class="installer">
+            <esp-web-install-button id="lcd-install">
+              <button slot="activate">Install LCD Firmware</button>
+              <span slot="unsupported" class="fallback">Use Chrome or Edge on desktop.</span>
+              <span slot="not-allowed" class="fallback">Open this page over HTTPS.</span>
+            </esp-web-install-button>
+          </div>
+        </article>
+      </section>
+
+      <section class="notes" aria-label="Flashing notes">
+        <h2>Before Flashing</h2>
+        <ul>
+          <li>Use a USB data cable and select the device serial port when prompted.</li>
+          <li>Hold the board BOOT button while connecting if the browser cannot start flashing.</li>
+          <li>New installs may erase saved Wi-Fi and miner settings.</li>
+        </ul>
+      </section>
+
+      <p id="status" class="status">Loading latest release assets...</p>
+    </main>
+
+    <script>
+      const repo = "Distortions81/M45-Core-Firmware";
+      const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
+      const statusEl = document.querySelector("#status");
+
+      function findAsset(release, suffix) {
+        return release.assets.find((asset) => asset.name.endsWith(suffix));
+      }
+
+      function manifestFor(name, version, assetUrl) {
+        return {
+          name,
+          version,
+          new_install_prompt_erase: true,
+          builds: [
+            {
+              chipFamily: "ESP32",
+              parts: [{ path: assetUrl, offset: 0 }]
+            }
+          ]
+        };
+      }
+
+      function attachManifest(buttonId, manifest) {
+        const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        document.querySelector(buttonId).manifest = url;
+      }
+
+      async function loadLatestRelease() {
+        const response = await fetch(apiUrl, { headers: { Accept: "application/vnd.github+json" } });
+        if (!response.ok) {
+          throw new Error(`GitHub release lookup failed with HTTP ${response.status}`);
+        }
+
+        const release = await response.json();
+        const oledAsset = findAsset(release, "-oled-merged.bin");
+        const lcdAsset = findAsset(release, "-ideaspark-19-lcd-merged.bin");
+
+        if (!oledAsset || !lcdAsset) {
+          throw new Error("Latest release does not include both merged firmware images.");
+        }
+
+        attachManifest(
+          "#oled-install",
+          manifestFor("M45 Core OLED", release.tag_name, oledAsset.browser_download_url)
+        );
+        attachManifest(
+          "#lcd-install",
+          manifestFor("M45 Core ideaspark 1.9 inch LCD", release.tag_name, lcdAsset.browser_download_url)
+        );
+
+        statusEl.innerHTML = `Ready to flash <a href="${release.html_url}">${release.tag_name}</a>.`;
+      }
+
+      loadLatestRelease().catch((error) => {
+        statusEl.textContent = error.message;
+      });
+    </script>
+  </body>
+</html>
