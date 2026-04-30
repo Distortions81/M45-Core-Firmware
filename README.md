@@ -10,6 +10,10 @@ the classic ESP32 hardware SHA engine.
 - Default 128x64 SSD1306 display build.
 - Optional ideaspark ESP32 1.9 inch ST7789 LCD build with `--ideaspark-19-lcd`.
 
+## Performance
+
+- Average mining speed: 620 kH/s, measured April 30, 2026.
+
 ## Requirements
 
 - Official ESP-IDF checkout, tested with ESP-IDF v5.5.3.
