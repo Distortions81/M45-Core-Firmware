@@ -51,6 +51,8 @@ static void oled_apply_display_brightness(void) {
   }
 }
 #else
+#define OLED_MIN_ACTIVE_CONTRAST 1U
+
 static bool oled_set_ssd1306_contrast(uint8_t contrast) {
   if (g_oled_io_handle == NULL) {
     return false;
@@ -59,12 +61,25 @@ static bool oled_set_ssd1306_contrast(uint8_t contrast) {
                     "SSD1306 contrast");
 }
 
+static uint8_t oled_ssd1306_contrast_for_brightness(uint8_t brightness) {
+  return (uint8_t)(OLED_MIN_ACTIVE_CONTRAST +
+                   (((uint32_t)brightness * (255U - OLED_MIN_ACTIVE_CONTRAST)) / 100U));
+}
+
+static bool oled_set_ssd1306_display_on(bool enabled) {
+  if (g_oled_panel == NULL) {
+    return false;
+  }
+  return oled_check(esp_lcd_panel_disp_on_off(g_oled_panel, enabled),
+                    enabled ? "SSD1306 display on" : "SSD1306 display off");
+}
+
 static void oled_apply_display_brightness(void) {
   const uint8_t brightness = oled_clamped_brightness();
   if (g_oled_io_handle == NULL || g_applied_brightness_pct == brightness) {
     return;
   }
-  const uint8_t contrast = (uint8_t)(((uint32_t)brightness * 255U) / 100U);
+  const uint8_t contrast = oled_ssd1306_contrast_for_brightness(brightness);
   if (oled_set_ssd1306_contrast(contrast)) {
     g_applied_brightness_pct = brightness;
   }
@@ -85,7 +100,7 @@ void display_sleep(void) {
     g_applied_brightness_pct = 0;
   }
 #else
-  if (oled_set_ssd1306_contrast(0)) {
+  if (oled_set_ssd1306_display_on(false) || oled_set_ssd1306_contrast(0)) {
     g_applied_brightness_pct = 0;
   }
 #endif
@@ -100,10 +115,14 @@ void display_wake(void) {
   g_lcd_full_refresh_needed = true;
   g_lcd_graph_force_full = true;
   lcd_text_bg_cache_reset();
+  oled_apply_display_brightness();
 #else
+  oled_apply_display_brightness();
+  if (!oled_set_ssd1306_display_on(true)) {
+    oled_set_ssd1306_contrast(oled_ssd1306_contrast_for_brightness(oled_clamped_brightness()));
+  }
   g_oled_full_refresh_needed = true;
 #endif
-  oled_apply_display_brightness();
   g_display_sleeping = false;
 }
 
