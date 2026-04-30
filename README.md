@@ -16,6 +16,8 @@
 | --- | --- | --- | --- |
 | ![M45 Core OLED display](oled.png) | ![M45 Core ideaspark 1.9 inch LCD display](lcd.png) | ![M45 Core stats web UI](stats.png) | ![M45 Core settings web UI](settings.png) |
 
+[web firmware flash tool](https://distortions81.github.io/M45-Core-Firmware/).
+
 ## Requirements
 
 - Official ESP-IDF checkout, tested with ESP-IDF v5.5.3.
@@ -42,12 +44,3 @@ ideaspark ESP32 1.9 inch LCD firmware:
 ```sh
 ./scripts/build-firmware.sh --ideaspark-19-lcd
 ```
-
-## Flash
-
-The easiest path for users is the
-[web firmware flash tool](https://distortions81.github.io/M45-Core-Firmware/).
-
-Release tags include two merged `.bin` flash images: one for OLED and one for
-the ideaspark 1.9 inch LCD. The browser flasher uses those same images for both
-settings-preserving updates and clean setup flashes.
