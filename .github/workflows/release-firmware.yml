@@ -26,7 +26,7 @@ jobs:
       - name: Install LCD build dependencies
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends fonts-dejavu-core python3-pil zip
+          apt-get install -y --no-install-recommends fonts-dejavu-core python3-pil
 
       - name: Build OLED firmware
         run: ./scripts/build-firmware.sh --clean --build-dir build-oled
@@ -48,7 +48,7 @@ jobs:
           lcd_bin="dist/m45-core-${file_tag}-ideaspark-19-lcd.bin"
           oled_merged_bin="dist/m45-core-${file_tag}-oled-merged.bin"
           lcd_merged_bin="dist/m45-core-${file_tag}-ideaspark-19-lcd-merged.bin"
-          flash_bundle="dist/m45-core-${file_tag}-flash-bundle.zip"
+          release_notes="dist/RELEASE_NOTES.md"
 
           cp build-oled/m45-core.bin "${oled_bin}"
           cp build-lcd/m45-core.bin "${lcd_bin}"
@@ -81,20 +81,28 @@ jobs:
               > SHA256SUMS
           )
 
-          bundle_dir="$(mktemp -d)"
-          cp "${oled_merged_bin}" "${bundle_dir}/"
-          cp "${lcd_merged_bin}" "${bundle_dir}/"
-          cp dist/SHA256SUMS "${bundle_dir}/"
-          cp scripts/flash-release.py "${bundle_dir}/"
-          cp docs/FLASHING.md "${bundle_dir}/README.md"
-          (cd "${bundle_dir}" && zip -9 -r "${GITHUB_WORKSPACE}/${flash_bundle}" .)
+          {
+            printf '%s\n' '## Flash Firmware'
+            printf '\n'
+            printf '%s\n' 'Use the browser flasher:'
+            printf '\n'
+            printf '%s\n' 'https://distortions81.github.io/M45-Core-Firmware/'
+            printf '\n'
+            printf '%s\n' '## Release Assets'
+            printf '\n'
+            printf '%s\n' "- \`$(basename "${oled_merged_bin}")\`: OLED firmware for direct flashing"
+            printf '%s\n' "- \`$(basename "${lcd_merged_bin}")\`: ideaspark ESP32 1.9 inch LCD firmware for direct flashing"
+            printf '%s\n' '- `SHA256SUMS`: checksums for release binaries'
+            printf '\n'
+            printf '%s\n' 'The non-merged `.bin` files are app binaries for developer ESP-IDF workflows.'
+          } > "${release_notes}"
 
           {
             echo "oled_bin=${oled_bin}"
             echo "lcd_bin=${lcd_bin}"
             echo "oled_merged_bin=${oled_merged_bin}"
             echo "lcd_merged_bin=${lcd_merged_bin}"
-            echo "flash_bundle=${flash_bundle}"
+            echo "release_notes=${release_notes}"
             echo "checksums=dist/SHA256SUMS"
           } >> "${GITHUB_OUTPUT}"
 
@@ -107,17 +115,16 @@ jobs:
             ${{ steps.package.outputs.lcd_bin }}
             ${{ steps.package.outputs.oled_merged_bin }}
             ${{ steps.package.outputs.lcd_merged_bin }}
-            ${{ steps.package.outputs.flash_bundle }}
             ${{ steps.package.outputs.checksums }}
 
       - name: Attach binaries to GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          body_path: ${{ steps.package.outputs.release_notes }}
           files: |
             ${{ steps.package.outputs.oled_bin }}
             ${{ steps.package.outputs.lcd_bin }}
             ${{ steps.package.outputs.oled_merged_bin }}
             ${{ steps.package.outputs.lcd_merged_bin }}
-            ${{ steps.package.outputs.flash_bundle }}
             ${{ steps.package.outputs.checksums }}

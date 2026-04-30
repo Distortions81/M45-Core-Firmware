@@ -195,6 +195,7 @@
             </div>
           </div>
           <div class="installer">
+            <p id="oled-checksum" class="status">Waiting for checksum verification...</p>
             <esp-web-install-button id="oled-install">
               <button slot="activate">Install OLED Firmware</button>
               <span slot="unsupported" class="fallback">Use Chrome or Edge on desktop.</span>
@@ -213,6 +214,7 @@
             </div>
           </div>
           <div class="installer">
+            <p id="lcd-checksum" class="status">Waiting for checksum verification...</p>
             <esp-web-install-button id="lcd-install">
               <button slot="activate">Install LCD Firmware</button>
               <span slot="unsupported" class="fallback">Use Chrome or Edge on desktop.</span>
@@ -238,9 +240,66 @@
       const repo = "Distortions81/M45-Core-Firmware";
       const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
       const statusEl = document.querySelector("#status");
+      const oledChecksumEl = document.querySelector("#oled-checksum");
+      const lcdChecksumEl = document.querySelector("#lcd-checksum");
 
       function findAsset(release, suffix) {
         return release.assets.find((asset) => asset.name.endsWith(suffix));
+      }
+
+      function checksumName(filename) {
+        return filename.replace(/^\*/, "");
+      }
+
+      function parseChecksums(text) {
+        const checksums = new Map();
+        for (const line of text.split(/\r?\n/)) {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            continue;
+          }
+          const match = trimmed.match(/^([a-fA-F0-9]{64})\s+(.+)$/);
+          if (!match) {
+            throw new Error("SHA256SUMS contains an invalid line.");
+          }
+          checksums.set(checksumName(match[2]), match[1].toLowerCase());
+        }
+        return checksums;
+      }
+
+      function toHex(buffer) {
+        return Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      }
+
+      async function fetchText(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Download failed with HTTP ${response.status}`);
+        }
+        return response.text();
+      }
+
+      async function fetchArrayBuffer(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Download failed with HTTP ${response.status}`);
+        }
+        return response.arrayBuffer();
+      }
+
+      async function verifyAsset(asset, checksums, statusElement) {
+        const expected = checksums.get(asset.name);
+        if (!expected) {
+          throw new Error(`SHA256SUMS has no entry for ${asset.name}.`);
+        }
+
+        statusElement.textContent = `Checking ${asset.name}...`;
+        const bytes = await fetchArrayBuffer(asset.browser_download_url);
+        const actual = toHex(await crypto.subtle.digest("SHA-256", bytes));
+        if (actual !== expected) {
+          throw new Error(`Checksum mismatch for ${asset.name}.`);
+        }
+        statusElement.textContent = `Checksum passed: ${asset.name}`;
       }
 
       function manifestFor(name, version, assetUrl) {
@@ -272,10 +331,18 @@
         const release = await response.json();
         const oledAsset = findAsset(release, "-oled-merged.bin");
         const lcdAsset = findAsset(release, "-ideaspark-19-lcd-merged.bin");
+        const checksumsAsset = findAsset(release, "SHA256SUMS");
 
-        if (!oledAsset || !lcdAsset) {
-          throw new Error("Latest release does not include both merged firmware images.");
+        if (!oledAsset || !lcdAsset || !checksumsAsset) {
+          throw new Error("Latest release does not include both merged firmware images and SHA256SUMS.");
         }
+
+        statusEl.textContent = `Verifying release ${release.tag_name}...`;
+        const checksums = parseChecksums(await fetchText(checksumsAsset.browser_download_url));
+        await Promise.all([
+          verifyAsset(oledAsset, checksums, oledChecksumEl),
+          verifyAsset(lcdAsset, checksums, lcdChecksumEl)
+        ]);
 
         attachManifest(
           "#oled-install",
