@@ -36,8 +36,12 @@
   .word 0x3ff40078
 .Lnonce_step0:
   .word 0x01000000
-.Lnonce_step1:
-  .word 0x00010000
+.Lclear_swapped_byte1:
+  .word 0xff00ffff
+.Lclear_swapped_byte2:
+  .word 0xffff00ff
+.Lclear_swapped_byte3:
+  .word 0xffffff00
 .Lsha_pad:
   .word 0x80000000
 .Lfound_bit:
@@ -126,15 +130,32 @@ miner_scan_until_candidate_xtensa:
   add     a4, a4, a12
   extui   a11, a4, 24, 8
   bnez    a11, .Lwait_continue
-  l32r    a11, .Lnonce_step1
-  add     a4, a4, a11
+
+  /* a4 is byteswap(nonce); carry must move toward lower byte lanes. */
   extui   a11, a4, 16, 8
+  addi.n  a11, a11, 1
+  extui   a11, a11, 0, 8
+  slli    a11, a11, 16
+  l32r    a15, .Lclear_swapped_byte1
+  and     a4, a4, a15
+  or      a4, a4, a11
   bnez    a11, .Lwait_continue
-  movi    a11, 0x100
-  add     a4, a4, a11
+
   extui   a11, a4, 8, 8
+  addi.n  a11, a11, 1
+  extui   a11, a11, 0, 8
+  slli    a11, a11, 8
+  l32r    a15, .Lclear_swapped_byte2
+  and     a4, a4, a15
+  or      a4, a4, a11
   bnez    a11, .Lwait_continue
-  addi.n  a4, a4, 1
+
+  extui   a11, a4, 0, 8
+  addi.n  a11, a11, 1
+  extui   a11, a11, 0, 8
+  l32r    a15, .Lclear_swapped_byte3
+  and     a4, a4, a15
+  or      a4, a4, a11
 
 .Lwait_continue:
   DPORT_SAFE_READ a11, a7, 12
