@@ -22,7 +22,7 @@
     .range-row output{font-variant-numeric:tabular-nums;color:var(--muted);}
     .section-label{margin:18px 0 8px;font-weight:700;}
     .setting-note{margin:4px 0 18px 26px;font-size:12px;line-height:1.35;color:var(--muted);}
-    input[type="range"]{grid-column:1 / -1;width:100%;margin:0;}
+    input[type="range"],.range-row input[type="number"]{grid-column:1 / -1;width:100%;margin:0;}
     .toggle-row{
       display:grid;
       grid-template-columns:auto 1fr;
@@ -85,6 +85,11 @@
         <output id="display-brightness-value">{{DISPLAY_BRIGHTNESS}}%</output>
         <input id="display-brightness" name="display_brightness" type="range" min="0" max="100" step="5" value="{{DISPLAY_BRIGHTNESS}}">
       </div>
+      <div class="range-row">
+        <label for="display-sleep-minutes">Display sleep</label>
+        <output id="display-sleep-minutes-value"></output>
+        <input id="display-sleep-minutes" name="display_sleep_minutes" type="number" min="0" max="{{DISPLAY_SLEEP_MAX_MINUTES}}" step="1" value="{{DISPLAY_SLEEP_MINUTES}}">
+      </div>
       <div class="section-label">Performance</div>
       <label class="toggle-row" for="performance-mode">
         <input id="performance-mode" name="performance_mode" type="checkbox" {{PERFORMANCE_MODE_CHECKED}}>
@@ -127,13 +132,25 @@
       const deviceActionStatus=document.getElementById('device-action-status');
       const displayBrightness=document.getElementById('display-brightness');
       const displayBrightnessValue=document.getElementById('display-brightness-value');
+      const displaySleepMinutes=document.getElementById('display-sleep-minutes');
+      const displaySleepMinutesValue=document.getElementById('display-sleep-minutes-value');
       const performanceModeInput=document.getElementById('performance-mode');
       displayBrightness.addEventListener('input',()=>{displayBrightnessValue.textContent=displayBrightness.value+'%';});
+      function normalizedDisplaySleepMinutes(value){
+        return Math.max(0,parseInt(value,10)||0);
+      }
+      function displaySleepLabel(value){
+        const minutes=normalizedDisplaySleepMinutes(value);
+        return minutes===0?'Off':minutes+' min';
+      }
+      displaySleepMinutesValue.textContent=displaySleepLabel(displaySleepMinutes.value);
+      displaySleepMinutes.addEventListener('input',()=>{displaySleepMinutesValue.textContent=displaySleepLabel(displaySleepMinutes.value);});
       async function saveStratumSettings(){
         const flipVertical=document.getElementById('flip-vertical').checked;
         const runtimeScreensaver=document.getElementById('runtime-screensaver').checked;
         const displayLightMode=document.getElementById('display-light-mode').checked;
         const displayBrightnessPct=displayBrightness.value;
+        const displaySleepMinutesSetting=String(normalizedDisplaySleepMinutes(displaySleepMinutes.value));
         const performanceMode=performanceModeInput.checked;
         const primaryServer=document.getElementById('primary-server').value.trim();
         const primaryPort=document.getElementById('primary-port').value.trim();
@@ -159,7 +176,8 @@
               ...(flipVertical?{flip_vertical:'1'}:{}),
               ...(runtimeScreensaver?{runtime_screensaver:'1'}:{}),
               ...(displayLightMode?{display_light_mode:'1'}:{}),
-              display_brightness:displayBrightnessPct
+              display_brightness:displayBrightnessPct,
+              display_sleep_minutes:displaySleepMinutesSetting
             }).toString()
           });
           const displayMessage=await displayResponse.text();

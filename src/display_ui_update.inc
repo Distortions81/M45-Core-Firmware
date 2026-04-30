@@ -1,6 +1,6 @@
 /* Private implementation fragment included by display_ui.c. */
 void oled_update_status(void) {
-  if (g_oled_panel == NULL) {
+  if (g_oled_panel == NULL || g_display_sleeping) {
     return;
   }
   oled_apply_display_brightness();

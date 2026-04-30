@@ -217,19 +217,25 @@ static esp_err_t display_handler(httpd_req_t* req) {
   if (form_value(body, "display_brightness", value, sizeof(value))) {
     g_display.brightness_pct = parse_percent_or_default(value, previous.brightness_pct);
   }
+  if (form_value(body, "display_sleep_minutes", value, sizeof(value))) {
+    g_display.sleep_timeout_minutes =
+        parse_display_sleep_minutes_or_default(value, previous.sleep_timeout_minutes);
+  }
   nvs_handle_t nvs;
   if (nvs_open("display", NVS_READWRITE, &nvs) == ESP_OK) {
     nvs_set_u8(nvs, "flip", g_display.flip_vertical);
     nvs_set_u8(nvs, "screensaver", g_display.screensaver);
     nvs_set_u8(nvs, "light", g_display.light_mode);
     nvs_set_u8(nvs, "brightness", g_display.brightness_pct);
+    nvs_set_u16(nvs, "sleep_min", g_display.sleep_timeout_minutes);
     nvs_commit(nvs);
     nvs_close(nvs);
   }
   if (previous.flip_vertical != g_display.flip_vertical ||
       previous.screensaver != g_display.screensaver ||
       previous.light_mode != g_display.light_mode ||
-      previous.brightness_pct != g_display.brightness_pct) {
+      previous.brightness_pct != g_display.brightness_pct ||
+      previous.sleep_timeout_minutes != g_display.sleep_timeout_minutes) {
     request_display_refresh();
   }
   send_plain(req, "Display settings saved");

@@ -53,6 +53,8 @@ static esp_err_t settings_page_handler(httpd_req_t* req) {
   char primary_port[8];
   char backup_port[8];
   char display_brightness[8];
+  char display_sleep_minutes[8];
+  char display_sleep_max_minutes[8];
   char sta_ssid[224];
   char sta_ip[48];
   char primary_host[480];
@@ -64,6 +66,14 @@ static esp_err_t settings_page_handler(httpd_req_t* req) {
   snprintf(primary_port, sizeof(primary_port), "%u", g_stratum.primary_port);
   snprintf(backup_port, sizeof(backup_port), "%u", g_stratum.backup_port);
   snprintf(display_brightness, sizeof(display_brightness), "%u", g_display.brightness_pct);
+  snprintf(display_sleep_minutes,
+           sizeof(display_sleep_minutes),
+           "%u",
+           (unsigned)g_display.sleep_timeout_minutes);
+  snprintf(display_sleep_max_minutes,
+           sizeof(display_sleep_max_minutes),
+           "%u",
+           (unsigned)DISPLAY_SLEEP_MAX_MINUTES);
   html_escape(g_wifi.ssid[0] != '\0' ? g_wifi.ssid : "Not configured", sta_ssid, sizeof(sta_ssid));
   html_escape(g_sta_ip[0] != '\0' ? g_sta_ip : "Not connected", sta_ip, sizeof(sta_ip));
   html_escape(g_stratum.primary_host, primary_host, sizeof(primary_host));
@@ -84,6 +94,8 @@ static esp_err_t settings_page_handler(httpd_req_t* req) {
   values[count++] = (template_value_t){
       "DISPLAY_LIGHT_MODE_CHECKED", strcmp(normalized_theme(g_theme), "light") == 0 ? "checked" : ""};
   values[count++] = (template_value_t){"DISPLAY_BRIGHTNESS", display_brightness};
+  values[count++] = (template_value_t){"DISPLAY_SLEEP_MINUTES", display_sleep_minutes};
+  values[count++] = (template_value_t){"DISPLAY_SLEEP_MAX_MINUTES", display_sleep_max_minutes};
   values[count++] =
       (template_value_t){"PERFORMANCE_MODE_CHECKED", g_system.performance_mode ? "checked" : ""};
   values[count++] = (template_value_t){"STRATUM_PRIMARY_SERVER", primary_host};

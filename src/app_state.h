@@ -58,6 +58,7 @@
 
 #define FACTORY_RESET_GPIO APP_FACTORY_RESET_GPIO
 #define FACTORY_RESET_HOLD_MS 5000
+#define DISPLAY_SLEEP_MAX_MINUTES UINT16_MAX
 
 #define WIFI_CONNECT_TIMEOUT_MS 15000
 #define WIFI_RECONNECT_IDLE_MS 30000
@@ -163,6 +164,7 @@ typedef struct {
   uint8_t screensaver;
   uint8_t light_mode;
   uint8_t brightness_pct;
+  uint16_t sleep_timeout_minutes;
 } display_settings_t;
 
 typedef struct {
@@ -254,6 +256,9 @@ void oled_prepare_runtime_qr(void);
 void oled_prepare_pool_endpoint_cache(void);
 void oled_next_page(void);
 void oled_update_status(void);
+void display_sleep(void);
+void display_wake(void);
+bool display_is_sleeping(void);
 void request_display_refresh(void);
 void stratum_self_check(void);
 uint32_t stratum_benchmark_hashrate_us(int64_t duration_us);

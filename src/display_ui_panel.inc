@@ -4,6 +4,15 @@ static uint8_t oled_clamped_brightness(void) {
 }
 
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
+static bool lcd_set_backlight_duty(uint32_t duty) {
+  if (ledc_set_duty(LCD_BACKLIGHT_LEDC_MODE, LCD_BACKLIGHT_LEDC_CHANNEL, duty) != ESP_OK ||
+      ledc_update_duty(LCD_BACKLIGHT_LEDC_MODE, LCD_BACKLIGHT_LEDC_CHANNEL) != ESP_OK) {
+    ESP_LOGW(TAG, "LCD backlight duty update failed");
+    return false;
+  }
+  return true;
+}
+
 static void lcd_configure_backlight_pwm(void) {
   const ledc_timer_config_t timer = {
       .speed_mode = LCD_BACKLIGHT_LEDC_MODE,
@@ -37,26 +46,66 @@ static void oled_apply_display_brightness(void) {
     return;
   }
   const uint32_t duty = ((uint32_t)brightness * LCD_BACKLIGHT_LEDC_MAX_DUTY) / 100U;
-  if (ledc_set_duty(LCD_BACKLIGHT_LEDC_MODE, LCD_BACKLIGHT_LEDC_CHANNEL, duty) == ESP_OK &&
-      ledc_update_duty(LCD_BACKLIGHT_LEDC_MODE, LCD_BACKLIGHT_LEDC_CHANNEL) == ESP_OK) {
+  if (lcd_set_backlight_duty(duty)) {
     g_applied_brightness_pct = brightness;
-  } else {
-    ESP_LOGW(TAG, "LCD backlight duty update failed");
   }
 }
 #else
+static bool oled_set_ssd1306_contrast(uint8_t contrast) {
+  if (g_oled_io_handle == NULL) {
+    return false;
+  }
+  return oled_check(esp_lcd_panel_io_tx_param(g_oled_io_handle, 0x81, &contrast, 1),
+                    "SSD1306 contrast");
+}
+
 static void oled_apply_display_brightness(void) {
   const uint8_t brightness = oled_clamped_brightness();
   if (g_oled_io_handle == NULL || g_applied_brightness_pct == brightness) {
     return;
   }
   const uint8_t contrast = (uint8_t)(((uint32_t)brightness * 255U) / 100U);
-  if (oled_check(esp_lcd_panel_io_tx_param(g_oled_io_handle, 0x81, &contrast, 1),
-                 "SSD1306 contrast")) {
+  if (oled_set_ssd1306_contrast(contrast)) {
     g_applied_brightness_pct = brightness;
   }
 }
 #endif
+
+bool display_is_sleeping(void) {
+  return g_display_sleeping;
+}
+
+void display_sleep(void) {
+  if (g_display_sleeping) {
+    return;
+  }
+  g_display_sleeping = true;
+#if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
+  if (lcd_set_backlight_duty(0)) {
+    g_applied_brightness_pct = 0;
+  }
+#else
+  if (oled_set_ssd1306_contrast(0)) {
+    g_applied_brightness_pct = 0;
+  }
+#endif
+}
+
+void display_wake(void) {
+  if (!g_display_sleeping) {
+    return;
+  }
+  g_applied_brightness_pct = 0xff;
+#if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
+  g_lcd_full_refresh_needed = true;
+  g_lcd_graph_force_full = true;
+  lcd_text_bg_cache_reset();
+#else
+  g_oled_full_refresh_needed = true;
+#endif
+  oled_apply_display_brightness();
+  g_display_sleeping = false;
+}
 
 void start_oled(void) {
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD

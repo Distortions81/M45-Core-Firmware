@@ -176,6 +176,7 @@ static int64_t g_lcd_graph_last_saved_minute = -1;
 static const char* TAG = "oled";
 static esp_lcd_panel_handle_t g_oled_panel = NULL;
 static esp_lcd_panel_io_handle_t g_oled_io_handle = NULL;
+static bool g_display_sleeping = false;
 static uint8_t g_oled_frame[OLED_WIDTH * OLED_HEIGHT / 8];
 #if !APP_DISPLAY_IDEASPARK_ESP32_19_LCD
 #define OLED_PAGE_COUNT (OLED_HEIGHT / 8)

@@ -37,10 +37,12 @@ static const int64_t RUNTIME_DISPLAY_CHECK_US = 1000000LL;
 static const int64_t RUNTIME_CONNECTED_DISPLAY_CHECK_US = 1000000LL;
 static const int64_t RUNTIME_PRE_POOL_REFRESH_US = 1000000LL;
 static const int64_t RUNTIME_HASHRATE_REFRESH_US = 60000000LL;
+static const int64_t DISPLAY_SLEEP_MINUTE_US = 60000000LL;
 
 static int64_t g_last_display_check_us = 0;
 static int64_t g_last_display_refresh_us = 0;
 static int64_t g_last_hashrate_refresh_us = 0;
+static int64_t g_last_display_input_us = 0;
 static bool g_last_display_connected = false;
 static bool g_last_display_enabled = false;
 static bool g_last_display_using_backup = false;
@@ -202,6 +204,7 @@ static void load_settings(void) {
     nvs_get_u8(nvs, "screensaver", &g_display.screensaver);
     nvs_get_u8(nvs, "light", &g_display.light_mode);
     nvs_get_u8(nvs, "brightness", &g_display.brightness_pct);
+    nvs_get_u16(nvs, "sleep_min", &g_display.sleep_timeout_minutes);
     nvs_close(nvs);
   }
   if (g_display.brightness_pct > 100) {
@@ -321,6 +324,42 @@ void request_display_refresh(void) {
   g_display_refresh_requested = true;
 }
 
+static int64_t display_sleep_timeout_us(void) {
+  if (g_display.sleep_timeout_minutes == 0) {
+    return 0;
+  }
+  return (int64_t)g_display.sleep_timeout_minutes * DISPLAY_SLEEP_MINUTE_US;
+}
+
+static bool record_display_input(int64_t now) {
+  const bool was_sleeping = display_is_sleeping();
+  g_last_display_input_us = now;
+  if (was_sleeping) {
+    display_wake();
+    request_display_refresh();
+  }
+  return was_sleeping;
+}
+
+static void update_display_sleep_state(int64_t now) {
+  const int64_t timeout_us = display_sleep_timeout_us();
+  if (timeout_us == 0) {
+    if (display_is_sleeping()) {
+      display_wake();
+      request_display_refresh();
+    }
+    g_last_display_input_us = now;
+    return;
+  }
+
+  if (g_last_display_input_us == 0) {
+    g_last_display_input_us = now;
+  }
+  if (!display_is_sleeping() && now - g_last_display_input_us >= timeout_us) {
+    display_sleep();
+  }
+}
+
 static bool should_refresh_display(int64_t now) {
   if (g_display_refresh_requested) {
     return true;
@@ -401,23 +440,28 @@ static void factory_reset_button_task(void* arg) {
   (void)arg;
   int64_t pressed_since = 0;
   bool long_press_handled = false;
+  bool consume_current_press = false;
   while (true) {
+    const int64_t now = esp_timer_get_time();
     if (factory_reset_button_pressed()) {
       if (pressed_since == 0) {
-        pressed_since = esp_timer_get_time();
+        pressed_since = now;
         long_press_handled = false;
-      } else if (!long_press_handled &&
-                 esp_timer_get_time() - pressed_since >= (int64_t)FACTORY_RESET_HOLD_MS * 1000LL) {
+        consume_current_press = record_display_input(now);
+      } else if (!consume_current_press && !long_press_handled &&
+                 now - pressed_since >= (int64_t)FACTORY_RESET_HOLD_MS * 1000LL) {
         long_press_handled = true;
         erase_nvs_and_restart("boot button held while running");
       }
     } else {
-      if (pressed_since != 0 && !long_press_handled) {
+      if (pressed_since != 0 && !long_press_handled && !consume_current_press) {
+        record_display_input(now);
         oled_next_page();
         request_display_refresh();
       }
       pressed_since = 0;
       long_press_handled = false;
+      consume_current_press = false;
     }
     vTaskDelay(pdMS_TO_TICKS(100));
   }
@@ -566,6 +610,7 @@ void app_main(void) {
              g_stratum.suggested_difficulty);
   }
   start_oled();
+  g_last_display_input_us = esp_timer_get_time();
   oled_update_status();
   APP_SERIAL_LOGF("app: oled started\n");
   start_wifi();
@@ -579,7 +624,8 @@ void app_main(void) {
 
   while (true) {
     const int64_t now = esp_timer_get_time();
-    if (should_refresh_display(now)) {
+    update_display_sleep_state(now);
+    if (!display_is_sleeping() && should_refresh_display(now)) {
       oled_update_status();
       record_display_refresh(now);
     }

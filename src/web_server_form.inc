@@ -95,6 +95,31 @@ static uint8_t parse_percent_or_default(const char* text, uint8_t fallback) {
   return (uint8_t)value;
 }
 
+static uint16_t parse_display_sleep_minutes_or_default(const char* text, uint16_t fallback) {
+  if (text == NULL || text[0] == '\0') {
+    return fallback;
+  }
+  char* end = NULL;
+  const long value = strtol(text, &end, 10);
+  if (end != text && *end != '\0') {
+    char* decimal_end = NULL;
+    const double decimal_value = strtod(text, &decimal_end);
+    if (decimal_end != text && *decimal_end == '\0' && decimal_value < 1.0) {
+      return 0;
+    }
+  }
+  if (end == text || *end != '\0') {
+    return fallback;
+  }
+  if (value < 1) {
+    return 0;
+  }
+  if (value > DISPLAY_SLEEP_MAX_MINUTES) {
+    return DISPLAY_SLEEP_MAX_MINUTES;
+  }
+  return (uint16_t)value;
+}
+
 static void send_plain(httpd_req_t* req, const char* text) {
   httpd_resp_set_type(req, "text/plain");
   httpd_resp_sendstr(req, text);
