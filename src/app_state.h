@@ -251,6 +251,7 @@ void start_wifi(void);
 void start_network_tasks(void);
 bool wifi_setup_ap_active(void);
 bool wifi_station_started(void);
+bool wifi_test_station_credentials(const char* ssid, const char* password, char* error, size_t error_size);
 void start_oled(void);
 void oled_prepare_runtime_qr(void);
 void oled_prepare_pool_endpoint_cache(void);

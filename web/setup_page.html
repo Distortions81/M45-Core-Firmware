@@ -13,6 +13,11 @@
     label{display:block;margin:12px 0 6px;font-weight:600;}
     button{background:#111827;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:14px;cursor:pointer;}
     button[disabled]{opacity:.6;cursor:wait;}
+    dialog{border:0;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.28);max-width:360px;width:calc(100% - 32px);padding:0;background:var(--panel);color:var(--text);}
+    dialog::backdrop{background:rgba(17,24,39,.45);}
+    .dialog-body{padding:18px;}
+    .dialog-title{font-weight:700;margin-bottom:8px;}
+    .dialog-actions{display:flex;justify-content:flex-end;margin-top:16px;}
     #scan-status{margin:16px 0 8px;font-weight:600;}
     #save-status{margin-top:12px;}
     #network-list{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px;}
@@ -23,12 +28,26 @@
     .network-more summary::after{content:'+';float:right;}
     .network-more[open] summary::after{content:'-';}
     .network-more ul{list-style:none;padding:0 10px 10px;margin:0;display:grid;gap:8px;}
-    .signal{text-align:right;min-width:78px;}
+    .signal{text-align:right;min-width:94px;}
     .signal strong{display:block;}
-    .signal-good strong{color:#15803d;}
-    .signal-ok strong{color:#ca8a04;}
-    .signal-weak strong{color:#dc2626;}
+    .signal-excellent strong{color:#15803d;}
+    .signal-good strong{color:#16a34a;}
+    .signal-fair strong{color:#ca8a04;}
+    .signal-weak strong{color:#ea580c;}
+    .signal-poor strong{color:#dc2626;}
     .signal small{display:block;color:var(--muted);font-size:11px;line-height:1.25;margin-top:3px;}
+    .signal-bars{display:flex;justify-content:flex-end;align-items:flex-end;gap:2px;height:18px;margin-bottom:4px;}
+    .signal-bars span{display:block;width:6px;border-radius:2px;background:var(--panel-border);}
+    .signal-bars span:nth-child(1){height:5px;}
+    .signal-bars span:nth-child(2){height:8px;}
+    .signal-bars span:nth-child(3){height:11px;}
+    .signal-bars span:nth-child(4){height:14px;}
+    .signal-bars span:nth-child(5){height:17px;}
+    .signal-excellent .signal-bars span:nth-child(-n+5){background:#15803d;}
+    .signal-good .signal-bars span:nth-child(-n+4){background:#16a34a;}
+    .signal-fair .signal-bars span:nth-child(-n+3){background:#ca8a04;}
+    .signal-weak .signal-bars span:nth-child(-n+2){background:#ea580c;}
+    .signal-poor .signal-bars span:nth-child(1){background:#dc2626;}
     ol{padding-left:20px;}
   </style>
 </head>
@@ -40,8 +59,8 @@
     <p>{{PAGE_INTRO}}</p>
     <div class="box">
       <strong>Wi-Fi networks</strong><br>
-      <span id="scan-status" class="muted">Tap Scan to find nearby networks.</span><br>
-      <button id="scan-button" type="button">Scan</button>
+      <span id="scan-status" class="muted">Scanning for networks...</span><br>
+      <button id="scan-button" type="button">Rescan for Wi-Fi</button>
       <ul id="network-list"></ul>
       <div id="network-more"></div>
     </div>
@@ -52,16 +71,24 @@
       <input id="station-password" name="password" type="password" autocomplete="current-password">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button id="save-button" type="button">{{SAVE_BUTTON_LABEL}}</button>
-        <button id="restart-button" type="button" disabled {{RESTART_BUTTON_HIDDEN}}>Reboot</button>
       </div>
       <div id="save-status" class="muted">{{SAVE_HINT}}</div>
     </div>
     <ol>
       <li>Choose a network or enter the name manually.</li>
       <li>Enter the password, if it has one.</li>
-      <li>Save.</li>
+      <li>Save and reboot.</li>
     </ol>
     <p class="muted">To change Wi-Fi later, open Settings, then Wi-Fi.</p>
+    <dialog id="wifi-error-dialog">
+      <div class="dialog-body">
+        <div class="dialog-title">Wi-Fi connection failed</div>
+        <div id="wifi-error-message" class="muted"></div>
+        <div class="dialog-actions">
+          <button id="wifi-error-close" type="button">OK</button>
+        </div>
+      </div>
+    </dialog>
     <script>
       const scanButton=document.getElementById('scan-button');
       const scanStatus=document.getElementById('scan-status');
@@ -70,20 +97,36 @@
       const ssidInput=document.getElementById('station-ssid');
       const passwordInput=document.getElementById('station-password');
       const saveButton=document.getElementById('save-button');
-      const restartButton=document.getElementById('restart-button');
       const saveStatus=document.getElementById('save-status');
+      const wifiErrorDialog=document.getElementById('wifi-error-dialog');
+      const wifiErrorMessage=document.getElementById('wifi-error-message');
+      const wifiErrorClose=document.getElementById('wifi-error-close');
+      function showWifiError(message){
+        wifiErrorMessage.textContent=message;
+        if(wifiErrorDialog.showModal){
+          wifiErrorDialog.showModal();
+        }else{
+          window.alert(message);
+        }
+      }
       function signalInfo(rssiText){
         const rssi=Number(rssiText);
         if(!Number.isFinite(rssi)){
-          return {label:'Unknown',className:'signal signal-weak'};
+          return {label:'Unknown',className:'signal signal-poor'};
+        }
+        if(rssi>=-50){
+          return {label:'Excellent',className:'signal signal-excellent'};
         }
         if(rssi>=-60){
           return {label:'Strong',className:'signal signal-good'};
         }
-        if(rssi>=-72){
-          return {label:'OK',className:'signal signal-ok'};
+        if(rssi>=-67){
+          return {label:'Good',className:'signal signal-fair'};
         }
-        return {label:'Weak',className:'signal signal-weak'};
+        if(rssi>=-75){
+          return {label:'Weak',className:'signal signal-weak'};
+        }
+        return {label:'Poor',className:'signal signal-poor'};
       }
       function networkItem(network){
         const item=document.createElement('li');
@@ -107,10 +150,17 @@
         const signal=signalInfo(network.rssi);
         const right=document.createElement('div');
         right.className=signal.className;
+        const bars=document.createElement('div');
+        bars.className='signal-bars';
+        bars.setAttribute('aria-hidden','true');
+        for(let i=0;i<5;i++){
+          bars.appendChild(document.createElement('span'));
+        }
         const label=document.createElement('strong');
         label.textContent=signal.label;
         const detail=document.createElement('small');
         detail.textContent=network.rssi+' dBm';
+        right.appendChild(bars);
         right.appendChild(label);
         right.appendChild(detail);
         item.appendChild(left);
@@ -124,10 +174,10 @@
           networkList.innerHTML='<li><span>No networks found.</span></li>';
           return;
         }
-        for(const network of networks.slice(0,5)){
+        for(const network of networks.slice(0,3)){
           networkList.appendChild(networkItem(network));
         }
-        const hiddenNetworks=networks.slice(5);
+        const hiddenNetworks=networks.slice(3);
         if(hiddenNetworks.length){
           const fold=document.createElement('details');
           fold.className='network-more';
@@ -162,7 +212,7 @@
           const response=await fetch('/api/networks',{cache:'no-store'});
           if(!response.ok){throw new Error('HTTP '+response.status);}
           const networks=parseNetworksText(await response.text());
-          const visibleCount=Math.min(networks.length,5);
+          const visibleCount=Math.min(networks.length,3);
           scanStatus.textContent='Showing '+visibleCount+' of '+networks.length+' networks.';
           renderNetworks(networks);
         }catch(error){
@@ -180,7 +230,7 @@
           return;
         }
         saveButton.disabled=true;
-        saveStatus.textContent='Saving Wi-Fi...';
+        saveStatus.textContent='Testing Wi-Fi connection...';
         try{
           const response=await fetch('/api/configure',{
             method:'POST',
@@ -192,30 +242,11 @@
             throw new Error(message||('HTTP '+response.status));
           }
           saveStatus.textContent=message||'Saved.';
-          if(!restartButton.hasAttribute('hidden')){
-            restartButton.disabled=false;
-          }
         }catch(error){
           saveStatus.textContent='Save failed: '+error.message;
+          showWifiError(error.message);
         }finally{
           saveButton.disabled=false;
-        }
-      }
-      async function restartDevice(){
-        restartButton.disabled=true;
-        saveStatus.textContent='Rebooting...';
-        try{
-          const response=await fetch('/api/reboot',{
-            method:'POST',
-            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}
-          });
-          if(!response.ok){
-            throw new Error('HTTP '+response.status);
-          }
-          saveStatus.textContent='Reboot started. Reconnect when the device is back online.';
-        }catch(error){
-          saveStatus.textContent='Restart failed: '+error.message;
-          restartButton.disabled=false;
         }
       }
       const factoryResetButton=document.getElementById('factory-reset-button');
@@ -242,9 +273,10 @@
           }
         });
       }
+      wifiErrorClose.addEventListener('click',()=>wifiErrorDialog.close());
       scanButton.addEventListener('click',scanNetworks);
       saveButton.addEventListener('click',saveCredentials);
-      restartButton.addEventListener('click',restartDevice);
+      scanNetworks();
     </script>
   </div>
   {{FOOTER}}

@@ -32,12 +32,11 @@ static esp_err_t send_setup_page(httpd_req_t* req, bool include_toolbar) {
                                            ? "Choose a different Wi-Fi network or enter one manually."
                                            : "Choose a Wi-Fi network to connect this device."};
   values[count++] = (template_value_t){"SAVED_WIFI_SSID", saved_wifi_ssid};
-  values[count++] = (template_value_t){"SAVE_BUTTON_LABEL", g_sta_connected ? "Save and reconnect" : "Save"};
-  values[count++] = (template_value_t){"RESTART_BUTTON_HIDDEN", g_sta_connected ? "hidden" : ""};
+  values[count++] = (template_value_t){"SAVE_BUTTON_LABEL", g_sta_connected ? "Save and reconnect" : "Save & reboot"};
   values[count++] = (template_value_t){"SAVE_HINT",
                                        g_sta_connected
                                            ? "Save settings to reboot and reconnect to the selected Wi-Fi."
-                                           : "Save, then reboot to connect."};
+                                           : "The device will test the Wi-Fi connection before saving and rebooting."};
   return send_template(req, WEB_SETUP_PAGE_HTML, values, count);
 }
 

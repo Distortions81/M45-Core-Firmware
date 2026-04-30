@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include "esp_err.h"
 #include "esp_event.h"
 #include "esp_mac.h"
 #include "esp_log.h"
@@ -19,6 +20,7 @@ static const char* TAG = "network";
 static bool g_sta_connect_done = false;
 static bool g_wifi_station_started = false;
 static bool g_softap_enabled = false;
+static uint8_t g_sta_disconnect_reason = 0;
 static uint32_t g_wifi_reconnect_delay_ms = WIFI_RECONNECT_BASE_MS;
 static int64_t g_wifi_next_reconnect_us = 0;
 static TaskHandle_t g_wifi_reconnect_task_handle = NULL;
@@ -119,8 +121,10 @@ static void wifi_event_handler(void* arg, esp_event_base_t base, int32_t event_i
   if (base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START && g_wifi.ssid[0] != '\0') {
     esp_wifi_connect();
   } else if (base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    const wifi_event_sta_disconnected_t* event = (const wifi_event_sta_disconnected_t*)event_data;
     g_sta_connected = false;
     g_sta_connect_done = true;
+    g_sta_disconnect_reason = event != NULL ? event->reason : 0;
     g_sta_ip[0] = '\0';
     if (g_wifi.ssid[0] != '\0') {
       g_wifi_next_reconnect_us =
@@ -139,6 +143,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t base, int32_t event_i
     oled_prepare_runtime_qr();
     g_sta_connected = true;
     g_sta_connect_done = true;
+    g_sta_disconnect_reason = 0;
     g_wifi_reconnect_delay_ms = WIFI_RECONNECT_BASE_MS;
     g_wifi_next_reconnect_us = 0;
     wake_reconnect_task = true;
@@ -199,6 +204,78 @@ bool wifi_setup_ap_active(void) {
 
 bool wifi_station_started(void) {
   return g_wifi_station_started;
+}
+
+static const char* wifi_connect_failure_text(uint8_t reason) {
+  switch (reason) {
+    case WIFI_REASON_AUTH_FAIL:
+    case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+    case WIFI_REASON_HANDSHAKE_TIMEOUT:
+      return "Unable to join that Wi-Fi network. Check the password and try again.";
+    case WIFI_REASON_NO_AP_FOUND:
+      return "Unable to find that Wi-Fi network. Check the Wi-Fi name and try again.";
+    case WIFI_REASON_ASSOC_FAIL:
+    case WIFI_REASON_ASSOC_EXPIRE:
+      return "Unable to associate with that Wi-Fi network. Move closer or try again.";
+    case WIFI_REASON_BEACON_TIMEOUT:
+      return "Wi-Fi signal was lost while connecting. Move closer or try again.";
+    default:
+      break;
+  }
+  return "Unable to connect to that Wi-Fi network. Check the Wi-Fi name and password.";
+}
+
+bool wifi_test_station_credentials(const char* ssid, const char* password, char* error, size_t error_size) {
+  if (error_size > 0) {
+    error[0] = '\0';
+  }
+  if (ssid == NULL || ssid[0] == '\0') {
+    copy_str(error, error_size, "Wi-Fi name is required");
+    return false;
+  }
+
+  wifi_config_t sta_config = {0};
+  copy_str((char*)sta_config.sta.ssid, sizeof(sta_config.sta.ssid), ssid);
+  copy_str((char*)sta_config.sta.password, sizeof(sta_config.sta.password), password != NULL ? password : "");
+  sta_config.sta.threshold.authmode = WIFI_AUTH_OPEN;
+
+  esp_wifi_disconnect();
+  vTaskDelay(pdMS_TO_TICKS(100));
+  g_sta_connect_done = false;
+  g_sta_disconnect_reason = 0;
+  g_sta_connected = false;
+  g_sta_ip[0] = '\0';
+  g_wifi_next_reconnect_us = 0;
+
+  esp_err_t result = esp_wifi_set_config(WIFI_IF_STA, &sta_config);
+  if (result != ESP_OK) {
+    snprintf(error, error_size, "Wi-Fi setup failed: %s", esp_err_to_name(result));
+    return false;
+  }
+
+  result = esp_wifi_connect();
+  if (result != ESP_OK) {
+    snprintf(error, error_size, "Wi-Fi connect failed: %s", esp_err_to_name(result));
+    return false;
+  }
+  g_wifi_station_started = true;
+
+  const int wait_ticks = WIFI_CONNECT_TIMEOUT_MS / 100;
+  for (int i = 0; i < wait_ticks && !g_sta_connected && !g_sta_connect_done; ++i) {
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+
+  if (g_sta_connected) {
+    return true;
+  }
+
+  if (g_sta_disconnect_reason != 0) {
+    copy_str(error, error_size, wifi_connect_failure_text(g_sta_disconnect_reason));
+  } else {
+    copy_str(error, error_size, "Wi-Fi connection timed out. Check the Wi-Fi name and password.");
+  }
+  esp_wifi_disconnect();
+  return false;
 }
 
 void start_wifi(void) {

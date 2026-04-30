@@ -126,18 +126,30 @@ static esp_err_t configure_handler(httpd_req_t* req) {
   char body[FORM_BODY_MAX];
   char ssid[33];
   char password[65];
+  char connect_error[160];
   read_body(req, body, sizeof(body));
   form_value(body, "ssid", ssid, sizeof(ssid));
   form_value(body, "password", password, sizeof(password));
-  if (ssid[0] == '\0' || !save_wifi_settings(ssid, password)) {
+  if (ssid[0] == '\0') {
     httpd_resp_set_status(req, "400 Bad Request");
     send_plain(req, "Wi-Fi name is required");
     return ESP_OK;
   }
+  const bool setup_mode = wifi_setup_ap_active() && !g_sta_connected;
+  if (setup_mode && !wifi_test_station_credentials(ssid, password, connect_error, sizeof(connect_error))) {
+    httpd_resp_set_status(req, "400 Bad Request");
+    send_plain(req, connect_error[0] != '\0' ? connect_error : "Wi-Fi connection failed");
+    return ESP_OK;
+  }
+  if (!save_wifi_settings(ssid, password)) {
+    httpd_resp_set_status(req, "500 Internal Server Error");
+    send_plain(req, "Wi-Fi save failed");
+    return ESP_OK;
+  }
   g_networks_cache[0] = '\0';
   g_networks_cache_us = 0;
-  if (g_sta_connected) {
-    send_plain(req, "Wi-Fi saved. Rebooting now...");
+  if (g_sta_connected || setup_mode) {
+    send_plain(req, setup_mode ? "Wi-Fi verified. Rebooting now..." : "Wi-Fi saved. Rebooting now...");
     vTaskDelay(pdMS_TO_TICKS(300));
     esp_restart();
     return ESP_OK;
