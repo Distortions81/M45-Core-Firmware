@@ -1,0 +1,249 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Device Settings</title>
+  {{THEMES}}
+  {{GLOBAL_STYLES}}
+  <style>
+    h1{margin:0 0 12px;font-size:28px;}
+    p,li{line-height:1.5;}
+    .status{margin:0 0 20px;display:grid;gap:8px;}
+    .box-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;}
+    .box-header label{margin:0;}
+    .box-action{flex:0 0 auto;}
+    label{display:block;margin:12px 0 6px;font-weight:600;}
+    .row{display:grid;grid-template-columns:1fr 140px;gap:12px;}
+    .field-stack{display:grid;gap:12px;}
+    .toggle-group{display:grid;gap:10px;margin-bottom:18px;}
+    .range-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;margin:0 0 18px;}
+    .range-row label{margin:0;}
+    .range-row output{font-variant-numeric:tabular-nums;color:var(--muted);}
+    .section-label{margin:18px 0 8px;font-weight:700;}
+    .setting-note{margin:4px 0 18px 26px;font-size:12px;line-height:1.35;color:var(--muted);}
+    input[type="range"]{grid-column:1 / -1;width:100%;margin:0;}
+    .toggle-row{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      align-items:center;
+      justify-content:start;
+      column-gap:10px;
+      margin:0;
+      font-weight:600;
+    }
+    .toggle-row input{
+      width:auto;
+      margin:0;
+    }
+    .actions{margin-top:18px;}
+    .device-box{margin-top:28px;}
+    .device-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px;}
+    .device-actions a,.device-actions button{display:block;text-align:center;text-decoration:none;}
+    button{background:#111827;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:14px;cursor:pointer;}
+    a.button-link{background:#111827;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:14px;cursor:pointer;text-decoration:none;}
+    button[disabled]{opacity:.6;cursor:wait;}
+    .danger{background:#b91c1c;}
+    #save-status{margin-top:12px;}
+    @media (max-width: 640px){
+      .row{grid-template-columns:1fr;}
+      .box-header{align-items:flex-start;}
+      .device-actions{grid-template-columns:1fr;}
+      .toggle-row{column-gap:8px;}
+    }
+  </style>
+</head>
+<body>
+  {{TOOLBAR}}
+  <div class="card">
+    <h1>{{DEVICE_NAME}} Settings</h1>
+    <div class="status">
+      <div><strong>Wi-Fi:</strong> <code>{{STA_SSID}}</code></div>
+      <div><strong>IP:</strong> <code>{{STA_IP}}</code></div>
+    </div>
+    <div class="box">
+      <div class="box-header">
+        <label>Display</label>
+        <a class="button-link box-action" href="/wifi">Wi-Fi settings</a>
+      </div>
+      <div class="toggle-group">
+        <label class="toggle-row" for="flip-vertical">
+          <input id="flip-vertical" name="flip_vertical" type="checkbox" {{DISPLAY_FLIP_VERTICAL_CHECKED}}>
+          <span>Flip screen</span>
+        </label>
+        <label class="toggle-row" for="runtime-screensaver">
+          <input id="runtime-screensaver" name="runtime_screensaver" type="checkbox" {{DISPLAY_RUNTIME_SCREENSAVER_CHECKED}}>
+          <span>Screen saver</span>
+        </label>
+        <label class="toggle-row" for="display-light-mode">
+          <input id="display-light-mode" name="display_light_mode" type="checkbox" {{DISPLAY_LIGHT_MODE_CHECKED}}>
+          <span>Light Color Theme</span>
+        </label>
+      </div>
+      <div class="range-row">
+        <label for="display-brightness">Display brightness</label>
+        <output id="display-brightness-value">{{DISPLAY_BRIGHTNESS}}%</output>
+        <input id="display-brightness" name="display_brightness" type="range" min="0" max="100" step="5" value="{{DISPLAY_BRIGHTNESS}}">
+      </div>
+      <div class="section-label">Performance</div>
+      <label class="toggle-row" for="performance-mode">
+        <input id="performance-mode" name="performance_mode" type="checkbox" {{PERFORMANCE_MODE_CHECKED}}>
+        <span>Performance Mode</span>
+      </label>
+      <div class="setting-note">Keeps the processor at full speed. It may use more power and run warmer.</div>
+      <div class="section-label">Mining</div>
+      <label for="primary-server">Main mining pool</label>
+      <div class="row field-stack">
+        <input id="primary-server" name="primary_server" placeholder="tinyminer.m45core.com" value="{{STRATUM_PRIMARY_SERVER}}">
+        <input id="primary-port" name="primary_port" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="3333" value="{{STRATUM_PRIMARY_PORT}}">
+      </div>
+      <label for="backup-server">Backup pool</label>
+      <div class="row field-stack">
+        <input id="backup-server" name="backup_server" placeholder="solobtc.nmminer.com" value="{{STRATUM_BACKUP_SERVER}}">
+        <input id="backup-port" name="backup_port" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="3333" value="{{STRATUM_BACKUP_PORT}}">
+      </div>
+      <label for="username">Worker name (optional)</label>
+      <input id="username" name="username" placeholder="0M45" value="{{STRATUM_USERNAME}}">
+      <label for="wallet-address">Wallet address</label>
+      <input id="wallet-address" name="wallet_address" placeholder="bc1qexamplewalletaddress..." value="{{STRATUM_WALLET_ADDRESS}}">
+      <div class="actions">
+        <button id="save-button" type="button">Save</button>
+      </div>
+      <div id="save-status" class="muted"></div>
+    </div>
+    <div class="box device-box">
+      <label>Device</label>
+      <div class="device-actions">
+        <button id="reboot-button" type="button">Reboot</button>
+        <button id="factory-reset-button" class="danger" type="button">Factory reset</button>
+      </div>
+      <div id="device-action-status" class="muted"></div>
+    </div>
+    <script>
+      const saveButton=document.getElementById('save-button');
+      const saveStatus=document.getElementById('save-status');
+      const rebootButton=document.getElementById('reboot-button');
+      const factoryResetButton=document.getElementById('factory-reset-button');
+      const deviceActionStatus=document.getElementById('device-action-status');
+      const displayBrightness=document.getElementById('display-brightness');
+      const displayBrightnessValue=document.getElementById('display-brightness-value');
+      const performanceModeInput=document.getElementById('performance-mode');
+      displayBrightness.addEventListener('input',()=>{displayBrightnessValue.textContent=displayBrightness.value+'%';});
+      async function saveStratumSettings(){
+        const flipVertical=document.getElementById('flip-vertical').checked;
+        const runtimeScreensaver=document.getElementById('runtime-screensaver').checked;
+        const displayLightMode=document.getElementById('display-light-mode').checked;
+        const displayBrightnessPct=displayBrightness.value;
+        const performanceMode=performanceModeInput.checked;
+        const primaryServer=document.getElementById('primary-server').value.trim();
+        const primaryPort=document.getElementById('primary-port').value.trim();
+        const backupServer=document.getElementById('backup-server').value.trim();
+        const backupPort=document.getElementById('backup-port').value.trim();
+        const username=document.getElementById('username').value.trim();
+        const walletAddress=document.getElementById('wallet-address').value.trim();
+        if(!primaryServer){
+          saveStatus.textContent='Main pool address is required.';
+          return;
+        }
+        if(!primaryPort){
+          saveStatus.textContent='Main pool port is required.';
+          return;
+        }
+        saveButton.disabled=true;
+        saveStatus.textContent='Saving...';
+        try{
+          const displayResponse=await fetch('/api/display',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+            body:new URLSearchParams({
+              ...(flipVertical?{flip_vertical:'1'}:{}),
+              ...(runtimeScreensaver?{runtime_screensaver:'1'}:{}),
+              ...(displayLightMode?{display_light_mode:'1'}:{}),
+              display_brightness:displayBrightnessPct
+            }).toString()
+          });
+          const displayMessage=await displayResponse.text();
+          if(!displayResponse.ok){
+            throw new Error(displayMessage||('HTTP '+displayResponse.status));
+          }
+          const systemResponse=await fetch('/api/system',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+            body:new URLSearchParams({
+              ...(performanceMode?{performance_mode:'1'}:{})
+            }).toString()
+          });
+          const systemMessage=await systemResponse.text();
+          if(!systemResponse.ok){
+            throw new Error(systemMessage||('HTTP '+systemResponse.status));
+          }
+          const stratumResponse=await fetch('/api/stratum',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+            body:new URLSearchParams({
+              primary_server:primaryServer,
+              primary_port:primaryPort,
+              backup_server:backupServer,
+              backup_port:backupPort,
+              username,
+              wallet_address:walletAddress
+            }).toString()
+          });
+          const stratumMessage=await stratumResponse.text();
+          if(!stratumResponse.ok){
+            throw new Error(stratumMessage||('HTTP '+stratumResponse.status));
+          }
+          saveStatus.textContent='Saved.';
+        }catch(error){
+          saveStatus.textContent='Save failed: '+error.message;
+        }finally{
+          saveButton.disabled=false;
+        }
+      }
+      saveButton.addEventListener('click',saveStratumSettings);
+      rebootButton.addEventListener('click',async()=>{
+        if(!window.confirm('Reboot now? The web page will disconnect while the device restarts.')){
+          return;
+        }
+        rebootButton.disabled=true;
+        deviceActionStatus.textContent='Rebooting...';
+        try{
+          const response=await fetch('/api/reboot',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}
+          });
+          const message=await response.text();
+          if(!response.ok){
+            throw new Error(message||('HTTP '+response.status));
+          }
+        }catch(error){
+          deviceActionStatus.textContent='Reboot failed: '+error.message;
+          rebootButton.disabled=false;
+        }
+      });
+      factoryResetButton.addEventListener('click',async()=>{
+        if(!window.confirm('Factory reset? This clears Wi-Fi and mining settings, then reboots.')){
+          return;
+        }
+        factoryResetButton.disabled=true;
+        deviceActionStatus.textContent='Resetting...';
+        try{
+          const response=await fetch('/api/factory-reset',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}
+          });
+          const message=await response.text();
+          if(!response.ok){
+            throw new Error(message||('HTTP '+response.status));
+          }
+          deviceActionStatus.textContent='Reset complete. Rebooting...';
+        }catch(error){
+          deviceActionStatus.textContent='Factory reset failed: '+error.message;
+          factoryResetButton.disabled=false;
+        }
+      });
+    </script>
+  </div>
+  {{FOOTER}}
+</body>
+</html>

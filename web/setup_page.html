@@ -1,0 +1,252 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Device Setup</title>
+  {{THEMES}}
+  {{GLOBAL_STYLES}}
+  <style>
+    h1{margin:0 0 12px;font-size:28px;}
+    p,li{line-height:1.5;}
+    .meta{margin:-4px 0 16px;font-size:14px;}
+    label{display:block;margin:12px 0 6px;font-weight:600;}
+    button{background:#111827;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:14px;cursor:pointer;}
+    button[disabled]{opacity:.6;cursor:wait;}
+    #scan-status{margin:16px 0 8px;font-weight:600;}
+    #save-status{margin-top:12px;}
+    #network-list{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px;}
+    #network-list li{background:var(--panel-soft);border:1px solid var(--panel-border);border-radius:12px;padding:12px;display:flex;justify-content:space-between;gap:12px;}
+    .network-more{margin-top:10px;border:1px solid var(--panel-border);border-radius:12px;background:var(--panel);overflow:hidden;}
+    .network-more summary{padding:11px 12px;cursor:pointer;font-weight:700;list-style:none;}
+    .network-more summary::-webkit-details-marker{display:none;}
+    .network-more summary::after{content:'+';float:right;}
+    .network-more[open] summary::after{content:'-';}
+    .network-more ul{list-style:none;padding:0 10px 10px;margin:0;display:grid;gap:8px;}
+    .signal{text-align:right;min-width:78px;}
+    .signal strong{display:block;}
+    .signal-good strong{color:#15803d;}
+    .signal-ok strong{color:#ca8a04;}
+    .signal-weak strong{color:#dc2626;}
+    .signal small{display:block;color:var(--muted);font-size:11px;line-height:1.25;margin-top:3px;}
+    ol{padding-left:20px;}
+  </style>
+</head>
+<body>
+  {{TOOLBAR}}
+  <div class="card">
+    <h1>{{PAGE_TITLE}}</h1>
+    <p class="meta muted">Network <code>{{SSID}}</code> | Address <code>{{DEVICE_IP}}</code></p>
+    <p>{{PAGE_INTRO}}</p>
+    <div class="box">
+      <strong>Wi-Fi networks</strong><br>
+      <span id="scan-status" class="muted">Tap Scan to find nearby networks.</span><br>
+      <button id="scan-button" type="button">Scan</button>
+      <ul id="network-list"></ul>
+      <div id="network-more"></div>
+    </div>
+    <div class="box">
+      <label for="station-ssid">Wi-Fi name</label>
+      <input id="station-ssid" name="ssid" autocomplete="ssid" value="{{SAVED_WIFI_SSID}}">
+      <label for="station-password">Wi-Fi password</label>
+      <input id="station-password" name="password" type="password" autocomplete="current-password">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button id="save-button" type="button">{{SAVE_BUTTON_LABEL}}</button>
+        <button id="restart-button" type="button" disabled {{RESTART_BUTTON_HIDDEN}}>Reboot</button>
+      </div>
+      <div id="save-status" class="muted">{{SAVE_HINT}}</div>
+    </div>
+    <ol>
+      <li>Choose a network or enter the name manually.</li>
+      <li>Enter the password, if it has one.</li>
+      <li>Save.</li>
+    </ol>
+    <p class="muted">To change Wi-Fi later, open Settings, then Wi-Fi.</p>
+    <script>
+      const scanButton=document.getElementById('scan-button');
+      const scanStatus=document.getElementById('scan-status');
+      const networkList=document.getElementById('network-list');
+      const networkMore=document.getElementById('network-more');
+      const ssidInput=document.getElementById('station-ssid');
+      const passwordInput=document.getElementById('station-password');
+      const saveButton=document.getElementById('save-button');
+      const restartButton=document.getElementById('restart-button');
+      const saveStatus=document.getElementById('save-status');
+      function signalInfo(rssiText){
+        const rssi=Number(rssiText);
+        if(!Number.isFinite(rssi)){
+          return {label:'Unknown',className:'signal signal-weak'};
+        }
+        if(rssi>=-60){
+          return {label:'Strong',className:'signal signal-good'};
+        }
+        if(rssi>=-72){
+          return {label:'OK',className:'signal signal-ok'};
+        }
+        return {label:'Weak',className:'signal signal-weak'};
+      }
+      function networkItem(network){
+        const item=document.createElement('li');
+        const left=document.createElement('div');
+        const name=document.createElement('strong');
+        name.textContent=network.ssid||'(hidden network)';
+        const meta=document.createElement('div');
+        meta.className='muted';
+        meta.textContent=(network.auth_open?'No password':'Password required')+' | Channel '+network.channel;
+        item.style.cursor='pointer';
+        item.addEventListener('click',()=>{
+          ssidInput.value=network.ssid||'';
+          if(network.auth_open){
+            passwordInput.value='';
+          }
+          passwordInput.focus();
+          passwordInput.select();
+        });
+        left.appendChild(name);
+        left.appendChild(meta);
+        const signal=signalInfo(network.rssi);
+        const right=document.createElement('div');
+        right.className=signal.className;
+        const label=document.createElement('strong');
+        label.textContent=signal.label;
+        const detail=document.createElement('small');
+        detail.textContent=network.rssi+' dBm';
+        right.appendChild(label);
+        right.appendChild(detail);
+        item.appendChild(left);
+        item.appendChild(right);
+        return item;
+      }
+      function renderNetworks(networks){
+        networkList.innerHTML='';
+        networkMore.innerHTML='';
+        if(!networks.length){
+          networkList.innerHTML='<li><span>No networks found.</span></li>';
+          return;
+        }
+        for(const network of networks.slice(0,5)){
+          networkList.appendChild(networkItem(network));
+        }
+        const hiddenNetworks=networks.slice(5);
+        if(hiddenNetworks.length){
+          const fold=document.createElement('details');
+          fold.className='network-more';
+          const summary=document.createElement('summary');
+          summary.textContent='Show '+hiddenNetworks.length+' more';
+          const extraList=document.createElement('ul');
+          for(const network of hiddenNetworks){
+            extraList.appendChild(networkItem(network));
+          }
+          fold.appendChild(summary);
+          fold.appendChild(extraList);
+          networkMore.appendChild(fold);
+        }
+      }
+      function parseNetworksText(text){
+        return text.split('\n').filter(Boolean).map((line)=>{
+          const fields=line.split('\t');
+          return {
+            ssid:fields[0]||'',
+            rssi:fields[1]||'0',
+            channel:fields[2]||'?',
+            auth_open:fields[3]==='1'
+          };
+        });
+      }
+      async function scanNetworks(){
+        scanButton.disabled=true;
+        scanStatus.textContent='Scanning for networks...';
+        networkList.innerHTML='';
+        networkMore.innerHTML='';
+        try{
+          const response=await fetch('/api/networks',{cache:'no-store'});
+          if(!response.ok){throw new Error('HTTP '+response.status);}
+          const networks=parseNetworksText(await response.text());
+          const visibleCount=Math.min(networks.length,5);
+          scanStatus.textContent='Showing '+visibleCount+' of '+networks.length+' networks.';
+          renderNetworks(networks);
+        }catch(error){
+          scanStatus.textContent='Scan failed. Try again.';
+          networkList.innerHTML='<li><span class="muted">'+error.message+'</span></li>';
+        }finally{
+          scanButton.disabled=false;
+        }
+      }
+      async function saveCredentials(){
+        const ssid=ssidInput.value.trim();
+        const password=passwordInput.value;
+        if(!ssid){
+          saveStatus.textContent='Wi-Fi name is required.';
+          return;
+        }
+        saveButton.disabled=true;
+        saveStatus.textContent='Saving Wi-Fi...';
+        try{
+          const response=await fetch('/api/configure',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+            body:new URLSearchParams({ssid,password}).toString()
+          });
+          const message=await response.text();
+          if(!response.ok){
+            throw new Error(message||('HTTP '+response.status));
+          }
+          saveStatus.textContent=message||'Saved.';
+          if(!restartButton.hasAttribute('hidden')){
+            restartButton.disabled=false;
+          }
+        }catch(error){
+          saveStatus.textContent='Save failed: '+error.message;
+        }finally{
+          saveButton.disabled=false;
+        }
+      }
+      async function restartDevice(){
+        restartButton.disabled=true;
+        saveStatus.textContent='Rebooting...';
+        try{
+          const response=await fetch('/api/reboot',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}
+          });
+          if(!response.ok){
+            throw new Error('HTTP '+response.status);
+          }
+          saveStatus.textContent='Reboot started. Reconnect when the device is back online.';
+        }catch(error){
+          saveStatus.textContent='Restart failed: '+error.message;
+          restartButton.disabled=false;
+        }
+      }
+      const factoryResetButton=document.getElementById('factory-reset-button');
+      if(factoryResetButton){
+        factoryResetButton.addEventListener('click',async()=>{
+          if(!window.confirm('Factory reset? This will clear Wi-Fi and mining settings and reboot the device.')){
+            return;
+          }
+          factoryResetButton.disabled=true;
+          saveStatus.textContent='Factory reset in progress...';
+          try{
+            const response=await fetch('/api/factory-reset',{
+              method:'POST',
+              headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}
+            });
+            const message=await response.text();
+            if(!response.ok){
+              throw new Error(message||('HTTP '+response.status));
+            }
+            saveStatus.textContent='Factory reset complete. Restarting device...';
+          }catch(error){
+            saveStatus.textContent='Factory reset failed: '+error.message;
+            factoryResetButton.disabled=false;
+          }
+        });
+      }
+      scanButton.addEventListener('click',scanNetworks);
+      saveButton.addEventListener('click',saveCredentials);
+      restartButton.addEventListener('click',restartDevice);
+    </script>
+  </div>
+  {{FOOTER}}
+</body>
+</html>

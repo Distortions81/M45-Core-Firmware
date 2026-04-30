@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Licenses</title>
+  {{THEMES}}
+  {{GLOBAL_STYLES}}
+  <style>
+    h1{margin:0 0 12px;font-size:26px;}
+    h2{margin:20px 0 10px;font-size:18px;}
+    p,li{line-height:1.5;}
+    .summary{display:grid;gap:10px;margin:14px 0 0;}
+    .summary div{background:var(--panel-soft);border:1px solid var(--panel-border);border-radius:8px;padding:12px;}
+    .summary strong{display:block;margin-bottom:4px;}
+    .links{display:grid;gap:8px;margin:10px 0 0;padding-left:20px;}
+    a{color:var(--accent);}
+  </style>
+</head>
+<body>
+  {{TOOLBAR}}
+  <div class="card">
+    <h1>Licenses</h1>
+    <p>Project firmware and source code are licensed under the MIT License. Copyright (c) 2026 Carl Frank Otto III.</p>
+
+    <h2>Project and component licenses</h2>
+    <div class="summary">
+      <div><strong>M45 Core Firmware</strong>Project-owned firmware, scripts, web UI, and documentation are licensed under the <a href="/licenses/mit.txt">MIT License</a>.</div>
+      <div><strong>ESP-IDF</strong>Espressif original code is Apache License 2.0, with bundled third-party components under their source licenses. Source headers and bundled component license files take precedence over this summary. See <a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32/COPYRIGHT.html">ESP-IDF copyright and licenses</a> and <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>.</div>
+      <div><strong>Mbed TLS via ESP-IDF/WPA supplicant</strong>Used through the ESP-IDF build context. See <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>.</div>
+      <div><strong>FreeRTOS via ESP-IDF</strong>MIT License.</div>
+      <div><strong>lwIP via ESP-IDF</strong>BSD License.</div>
+      <div><strong>Newlib via ESP-IDF/toolchain</strong>BSD License.</div>
+      <div><strong>QRCode</strong>MIT License, Richard Moore; derived in part from Project Nayuki's QR Code generator. Source: <a href="https://github.com/ricmoo/QRCode">ricmoo/QRCode</a>.</div>
+    </div>
+
+    <h2>License references</h2>
+    <p class="muted">Third-party components keep their own licenses. Full license texts and notices should be included with product documentation or distribution materials.</p>
+    <ul class="links">
+      <li><a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a></li>
+      <li><a href="https://opensource.org/license/mit">MIT License reference</a></li>
+      <li><a href="https://opensource.org/license/bsd-3-clause">BSD 3-Clause License reference</a></li>
+      <li><a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32/COPYRIGHT.html">ESP-IDF copyright and licenses</a></li>
+      <li><a href="https://github.com/ricmoo/QRCode">QRCode source</a></li>
+    </ul>
+
+    <h2>Bundled license texts</h2>
+    <p class="muted">These license texts are stored on this device.</p>
+    <ul class="links">
+      <li><a href="/licenses/mit.txt">M45 Core Firmware MIT License</a></li>
+      <li><a href="/licenses/apache-2.0.txt">Apache License 2.0</a></li>
+      <li><a href="/licenses/qrcode.txt">QRCode MIT License</a></li>
+    </ul>
+  </div>
+  {{FOOTER}}
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>M45 Miner Stats</title>
+  {{THEMES}}
+  {{GLOBAL_STYLES}}
+  <style>
+    h1{margin:0 0 14px;font-size:26px;}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+    .stat{background:var(--panel-soft);border:1px solid var(--panel-border);border-radius:10px;padding:12px;min-width:0;}
+    .stat-wide{grid-column:1/-1;}
+    .stat-group{grid-column:1/-1;border:1px solid var(--panel-border);border-radius:8px;background:var(--panel);overflow:hidden;}
+    .stat-group summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;cursor:pointer;list-style:none;}
+    .stat-group summary::-webkit-details-marker{display:none;}
+    .stat-group summary::after{content:'+';font-size:18px;font-weight:700;}
+    .stat-group[open] summary::after{content:'-';}
+    .stat-group-content{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 10px 10px;}
+    .section-title{margin:0;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+    .label{display:block;font-size:13px;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;}
+    .value{font-size:21px;font-weight:700;overflow-wrap:anywhere;}
+      .value-small{font-size:13px;line-height:1.25;color:var(--muted);font-weight:600;}
+    .sparkline-pill{
+      height:68px;
+      margin:0 0 10px;
+      border:1px solid var(--panel-border);
+      border-radius:8px;
+      background:var(--panel);
+      overflow:hidden;
+    }
+    .sparkline-pill canvas{display:block;width:100%;height:68px;}
+    @media (max-width: 640px){
+      h1{font-size:20px;margin-bottom:10px;}
+      .grid{gap:8px;}
+      .stat-group{border-radius:8px;}
+      .stat-group summary{padding:9px;}
+      .stat-group-content{gap:8px;padding:0 8px 8px;}
+      .stat{padding:9px;border-radius:8px;}
+      .section-title{font-size:11px;letter-spacing:.03em;}
+      .label{font-size:10px;margin-bottom:3px;letter-spacing:.03em;}
+      .value{font-size:17px;line-height:1.15;}
+      .value-small{font-size:11px;}
+      .sparkline-pill{height:48px;margin-bottom:6px;}
+      .sparkline-pill canvas{height:48px;}
+      .muted{margin:10px 0 0;}
+    }
+  </style>
+</head>
+<body>
+  {{TOOLBAR}}
+  <div class="card">
+    <h1>{{DEVICE_NAME}} Stats</h1>
+    <div class="grid">
+      <div class="stat stat-wide">
+        <span class="label">Hashrate</span>
+        <div class="sparkline-pill"><canvas id="hashrate-graph" width="480" height="84"></canvas></div>
+        <div class="value" data-stat="hashes_per_sec">{{HASHES_PER_SEC}}</div>
+        <div class="value value-small" data-stat="hashrate_average">{{HASHRATE_AVERAGE}}</div>
+      </div>
+      <div class="stat">
+        <span class="label">Uptime</span>
+        <div class="value" data-stat="uptime">{{UPTIME}}</div>
+      </div>
+      <div class="stat">
+        <span class="label">Connection</span>
+        <div class="value" data-stat="pool_status">{{POOL_STATUS}}</div>
+      </div>
+      <div class="stat stat-wide">
+        <span class="label">Pool</span>
+        <div class="value" data-stat="pool_endpoint">{{POOL_ENDPOINT}}</div>
+      </div>
+      <div class="stat">
+        <span class="label">Shares/min</span>
+        <div class="value" data-stat="shares_per_min">{{SHARES_PER_MIN}}</div>
+      </div>
+      <div class="stat">
+        <span class="label">Mining difficulty</span>
+        <div class="value" data-stat="current_difficulty_micro">{{CURRENT_DIFFICULTY_MICRO}}</div>
+        <div class="value value-small" data-stat="current_difficulty_raw">{{CURRENT_DIFFICULTY}}</div>
+      </div>
+      <div class="stat">
+        <span class="label">Shares</span>
+        <div class="value" data-stat="submitted_shares">{{SUBMITTED_SHARES}}</div>
+      </div>
+      <div class="stat">
+        <span class="label">Share errors</span>
+        <div class="value" data-stat="share_error_pct">{{SHARE_ERROR_PCT}}</div>
+        <div class="value value-small" data-stat="rejected_shares">{{REJECTED_SHARES}} rejected</div>
+      </div>
+      <details class="stat-group" id="system-stats">
+        <summary><span class="section-title">Device details</span></summary>
+        <div class="stat-group-content">
+          <div class="stat">
+            <span class="label">Device uptime</span>
+            <div class="value" data-memory="hardware_uptime">{{HARDWARE_UPTIME}}</div>
+          </div>
+          <div class="stat">
+            <span class="label">Pool uptime</span>
+            <div class="value" data-memory="pool_uptime">{{POOL_UPTIME}}</div>
+          </div>
+          <div class="stat">
+            <span class="label">Pool connected</span>
+            <div class="value" data-memory="pool_uptime_pct">{{POOL_UPTIME_PCT}}</div>
+          </div>
+          <div class="stat">
+            <span class="label">Hash errors</span>
+            <div class="value" data-memory="hash_error_pct">{{HASH_ERROR_PCT}}</div>
+          </div>
+          <div class="stat stat-wide">
+            <span class="label">Memory</span>
+            <div class="value value-small" data-memory="memory_summary">free={{FREE_HEAP}}, low={{MIN_FREE_HEAP}}, block={{LARGEST_FREE_BLOCK}}, int={{INTERNAL_FREE_HEAP}}, int-low={{INTERNAL_MIN_FREE_HEAP}}, int-block={{INTERNAL_LARGEST_FREE_BLOCK}}, dma={{DMA_FREE_HEAP}}</div>
+          </div>
+          <div class="stat stat-wide">
+            <span class="label">Build</span>
+            <div class="value value-small">{{BUILD_ID}}</div>
+          </div>
+          <div class="stat stat-wide">
+            <span class="label">Built</span>
+            <div class="value value-small">{{BUILD_TIME}}</div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+  {{FOOTER}}
+  <script>
+    const statNodes={};
+    document.querySelectorAll('[data-stat]').forEach((node)=>{statNodes[node.dataset.stat]=node;});
+    const memoryNodes={};
+    document.querySelectorAll('[data-memory]').forEach((node)=>{memoryNodes[node.dataset.memory]=node;});
+    const graph=document.getElementById('hashrate-graph');
+    const systemStats=document.getElementById('system-stats');
+    const graphContext=graph.getContext('2d');
+    const hashrateHistory=[];
+    const maxStoredHashrateSamples=360;
+    const hashrateColumnWidth=2;
+    let memoryRefreshTimer=0;
+
+    function cssColor(name){
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function formatNumber(value,digits){
+      const number=Number(value);
+      if(!Number.isFinite(number)){
+        return '0';
+      }
+      return number.toFixed(digits);
+    }
+
+    function formatHashrate(value){
+      const number=Number(value);
+      if(!Number.isFinite(number)||number<=0){
+        return '0 H/s';
+      }
+      if(number>=1000){
+        return (number/1000).toFixed(1)+' kH/s';
+      }
+      return number.toFixed(0)+' H/s';
+    }
+
+    function formatMicrodifficulty(value){
+      const number=Number(value);
+      if(!Number.isFinite(number)||number<=0){
+        return '0.0 \u00b5diff';
+      }
+      return (number*1000000).toFixed(1)+' \u00b5diff';
+    }
+
+    function formatPercent(numerator,denominator){
+      const top=Number(numerator);
+      const bottom=Number(denominator);
+      if(!Number.isFinite(top)||!Number.isFinite(bottom)||bottom<=0){
+        return '0.0%';
+      }
+      return ((top*100)/bottom).toFixed(1)+'%';
+    }
+
+    function formatBytes(value){
+      const number=Number(value);
+      if(!Number.isFinite(number)||number<0){
+        return '0 B';
+      }
+      if(number>=1048576){
+        return (number/1048576).toFixed(2)+' MiB';
+      }
+      if(number>=1024){
+        return (number/1024).toFixed(2)+' KiB';
+      }
+      return number.toFixed(0)+' B';
+    }
+
+    function drawHashrateGraph(){
+      const scale=window.devicePixelRatio||1;
+      const width=graph.clientWidth;
+      const height=graph.clientHeight;
+      const pixelWidth=Math.max(1,Math.floor(width*scale));
+      const pixelHeight=Math.max(1,Math.floor(height*scale));
+      if(graph.width!==pixelWidth||graph.height!==pixelHeight){
+        graph.width=pixelWidth;
+        graph.height=pixelHeight;
+      }
+      graphContext.setTransform(scale,0,0,scale,0,0);
+      graphContext.clearRect(0,0,width,height);
+      graphContext.fillStyle=cssColor('--panel');
+      graphContext.fillRect(0,0,width,height);
+      const padX=8;
+      const padTop=7;
+      const padBottom=9;
+      const plotWidth=Math.max(1,width-padX*2);
+      const plotHeight=Math.max(1,height-padTop-padBottom);
+      const visibleCount=Math.max(1,Math.floor(plotWidth/hashrateColumnWidth));
+      const visibleHistory=hashrateHistory.slice(-visibleCount);
+      if(visibleHistory.length<1){
+        return;
+      }
+      const scaleValues=visibleHistory.filter((value)=>value>0);
+      const visibleValues=scaleValues.length>0?scaleValues:visibleHistory;
+      const minValue=Math.min(...visibleValues);
+      const maxValue=Math.max(...visibleValues,1);
+      const midValue=(minValue+maxValue)/2;
+      const minRange=Math.max(maxValue*.08,1000);
+      const valueRange=Math.max(maxValue-minValue,minRange);
+      const scaleMin=Math.max(0,midValue-valueRange/2);
+      const scaleMax=Math.max(scaleMin+1,midValue+valueRange/2);
+      graphContext.strokeStyle=cssColor('--muted');
+      graphContext.globalAlpha=.16;
+      graphContext.beginPath();
+      for(let i=0;i<3;i++){
+        const y=padTop+(plotHeight*i/2);
+        graphContext.moveTo(padX,y);
+        graphContext.lineTo(width-padX,y);
+      }
+      graphContext.stroke();
+      const baseline=padTop+plotHeight;
+      const startX=Math.max(padX,width-padX-visibleHistory.length*hashrateColumnWidth);
+      graphContext.fillStyle='#16a34a';
+      graphContext.globalAlpha=.82;
+      visibleHistory.forEach((value,index)=>{
+        const boundedValue=Math.max(scaleMin,Math.min(scaleMax,value));
+        const barTop=padTop+plotHeight-((boundedValue-scaleMin)/(scaleMax-scaleMin))*plotHeight;
+        const barHeight=value>0?Math.max(1,baseline-barTop):0;
+        graphContext.fillRect(startX+index*hashrateColumnWidth,baseline-barHeight,hashrateColumnWidth,barHeight);
+      });
+      graphContext.globalAlpha=1;
+    }
+
+    function applyStats(data){
+      if(statNodes.uptime){statNodes.uptime.textContent=data.uptime||'0m';}
+      if(statNodes.pool_status){statNodes.pool_status.textContent=data.pool_status||'Not connected';}
+      if(statNodes.pool_endpoint){statNodes.pool_endpoint.textContent=data.pool_endpoint||'Not configured';}
+      if(statNodes.shares_per_min){statNodes.shares_per_min.textContent=formatNumber(data.shares_per_min,2);}
+      if(statNodes.hashes_per_sec){statNodes.hashes_per_sec.textContent=formatHashrate(data.hashes_per_sec);}
+      if(statNodes.hashrate_average){statNodes.hashrate_average.textContent=data.hashrate_average||'Average: gathering';}
+      if(statNodes.current_difficulty_micro){statNodes.current_difficulty_micro.textContent=formatMicrodifficulty(data.current_difficulty);}
+      if(statNodes.current_difficulty_raw){statNodes.current_difficulty_raw.textContent=formatNumber(data.current_difficulty,10);}
+      if(statNodes.submitted_shares){statNodes.submitted_shares.textContent=String(data.submitted_shares||0);}
+      if(statNodes.share_error_pct){statNodes.share_error_pct.textContent=formatPercent(data.rejected_shares,data.submitted_shares);}
+      if(statNodes.rejected_shares){statNodes.rejected_shares.textContent=String(data.rejected_shares||0)+' rejected';}
+      const hashrate=Number(data.hashes_per_sec);
+      if(Number.isFinite(hashrate)){
+        hashrateHistory.push(hashrate);
+        while(hashrateHistory.length>maxStoredHashrateSamples){
+          hashrateHistory.shift();
+        }
+        drawHashrateGraph();
+      }
+    }
+
+    function parseStatsCsv(text){
+      const fields=text.trim().split(',');
+      return {
+        uptime:fields[0]||'',
+        pool_status:fields[1]||'',
+        pool_endpoint:fields[2]||'',
+        shares_per_min:fields[3]||'0',
+        hashes_per_sec:fields[4]||'0',
+        hashrate_average:fields[5]||'Average: gathering',
+        current_difficulty:fields[6]||'0',
+        submitted_shares:fields[7]||'0',
+        rejected_shares:fields[8]||'0'
+      };
+    }
+
+    function parseMemoryCsv(text){
+      const fields=text.trim().split(',');
+      return {
+        free_heap:fields[0]||'0',
+        min_free_heap:fields[1]||'0',
+        largest_free_block:fields[2]||'0',
+        internal_free_heap:fields[3]||'0',
+        internal_min_free_heap:fields[4]||'0',
+        internal_largest_free_block:fields[5]||'0',
+        dma_free_heap:fields[6]||'0',
+        hardware_uptime_s:fields[7]||'0',
+        pool_uptime_s:fields[8]||'0',
+        pool_uptime_pct:fields[9]||'0.0',
+        hash_error_pct:fields[10]||'0.0%'
+      };
+    }
+
+    function formatDuration(secondsText){
+      const total=Number(secondsText);
+      if(!Number.isFinite(total)||total<=0){
+        return '0s';
+      }
+      const days=Math.floor(total/86400);
+      const hours=Math.floor((total/3600)%24);
+      const minutes=Math.floor((total/60)%60);
+      const seconds=Math.floor(total%60);
+      if(days>0){
+        return days+'d '+hours+'h';
+      }
+      if(hours>0){
+        return hours+'h '+minutes+'m';
+      }
+      if(minutes>0){
+        return minutes+'m '+seconds+'s';
+      }
+      return seconds+'s';
+    }
+
+    function applyMemory(data){
+      if(memoryNodes.hardware_uptime){memoryNodes.hardware_uptime.textContent=formatDuration(data.hardware_uptime_s);}
+      if(memoryNodes.pool_uptime){memoryNodes.pool_uptime.textContent=formatDuration(data.pool_uptime_s);}
+      if(memoryNodes.pool_uptime_pct){memoryNodes.pool_uptime_pct.textContent=formatNumber(data.pool_uptime_pct,1)+'%';}
+      if(memoryNodes.hash_error_pct){memoryNodes.hash_error_pct.textContent=data.hash_error_pct||'0.0%';}
+      if(memoryNodes.memory_summary){
+        memoryNodes.memory_summary.textContent='free='+formatBytes(data.free_heap)+
+          ', low='+formatBytes(data.min_free_heap)+
+          ', block='+formatBytes(data.largest_free_block)+
+          ', int='+formatBytes(data.internal_free_heap)+
+          ', int-low='+formatBytes(data.internal_min_free_heap)+
+          ', int-block='+formatBytes(data.internal_largest_free_block)+
+          ', dma='+formatBytes(data.dma_free_heap);
+      }
+    }
+
+    async function refreshStats(){
+      try{
+        const response=await fetch('/api/stats',{cache:'no-store'});
+        if(!response.ok){
+          throw new Error('HTTP '+response.status);
+        }
+        applyStats(parseStatsCsv(await response.text()));
+      }catch(error){}
+    }
+
+    async function refreshMemory(){
+      if(!systemStats||!systemStats.open){
+        return;
+      }
+      try{
+        const response=await fetch('/api/memory',{cache:'no-store'});
+        if(!response.ok){
+          throw new Error('HTTP '+response.status);
+        }
+        applyMemory(parseMemoryCsv(await response.text()));
+      }catch(error){}
+    }
+
+    function syncMemoryRefresh(){
+      if(systemStats&&systemStats.open){
+        refreshMemory();
+        if(!memoryRefreshTimer){
+          memoryRefreshTimer=setInterval(refreshMemory,15000);
+        }
+      }else if(memoryRefreshTimer){
+        clearInterval(memoryRefreshTimer);
+        memoryRefreshTimer=0;
+      }
+    }
+
+    window.addEventListener('resize',drawHashrateGraph);
+    if(systemStats){systemStats.addEventListener('toggle',syncMemoryRefresh);}
+    refreshStats();
+    setInterval(refreshStats,15000);
+  </script>
+</body>
+</html>
