@@ -2,8 +2,14 @@ name: Pages
 
 on:
   push:
-    tags:
-      - "*"
+    branches:
+      - main
+    paths:
+      - ".github/workflows/pages.yml"
+      - "docs/**"
+  repository_dispatch:
+    types:
+      - release-firmware-published
   workflow_dispatch:
 
 permissions:
