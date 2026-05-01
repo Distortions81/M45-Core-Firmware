@@ -153,6 +153,8 @@ static uint32_t g_synthetic_hw_block0[16] = {0};
 static uint32_t g_synthetic_hw_block1[16] = {0};
 static volatile uint32_t g_benchmark_sink = 0;
 static char g_stratum_line[STRATUM_LINE_MAX];
+static char g_pending_notify_line[STRATUM_LINE_MAX];
+static bool g_pending_notify_available = false;
 
 static const DRAM_ATTR uint32_t SHA256_INITIAL_STATE[8] = {
     0x6a09e667UL, 0xbb67ae85UL, 0x3c6ef372UL, 0xa54ff53aUL,

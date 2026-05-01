@@ -179,6 +179,8 @@ static bool stratum_session(int sock) {
   miner_clear_work();
   g_stratum_reconnect_requested = false;
   memset(&g_mining_job, 0, sizeof(g_mining_job));
+  g_pending_notify_available = false;
+  g_pending_notify_line[0] = '\0';
   g_stratum_runtime.payout_status = STRATUM_PAYOUT_STATUS_UNCHECKED;
   g_stratum_runtime.payout_percent_x100 = 0;
   set_job_share_target(&g_mining_job, g_stratum_runtime.current_difficulty);

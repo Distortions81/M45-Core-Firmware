@@ -1,5 +1,7 @@
 /* Private implementation fragment included by stratum_miner.c. */
 
+static void stratum_parse_notify(const char* line);
+
 static void stratum_parse_set_difficulty(const char* line) {
   const char* params = strstr(line, "\"params\"");
   if (params == NULL) {
@@ -57,6 +59,14 @@ static bool stratum_parse_subscribe_response(const char* line) {
   return true;
 }
 
+static void stratum_process_pending_notify(void) {
+  if (!g_pending_notify_available || !g_mining_job.subscribed) {
+    return;
+  }
+  g_pending_notify_available = false;
+  stratum_parse_notify(g_pending_notify_line);
+}
+
 static void stratum_parse_set_extranonce(const char* line) {
   json_span_t params;
   json_span_t values[2];
@@ -68,6 +78,7 @@ static void stratum_parse_set_extranonce(const char* line) {
   }
   g_mining_job.ready = false;
   miner_clear_work();
+  stratum_process_pending_notify();
 }
 
 static void json_trim_span(json_span_t* span) {
@@ -243,6 +254,11 @@ static bool stratum_prepare_job(json_span_t* values, size_t count) {
 
 static void stratum_parse_notify(const char* line) {
   json_span_t values[9];
+  if (!g_mining_job.subscribed) {
+    copy_str(g_pending_notify_line, sizeof(g_pending_notify_line), line);
+    g_pending_notify_available = true;
+    return;
+  }
   if (!stratum_notify_values(line, values) || !stratum_prepare_job(values, 9)) {
     g_mining_job.ready = false;
     miner_clear_work();

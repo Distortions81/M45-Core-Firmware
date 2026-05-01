@@ -286,7 +286,9 @@ static void stratum_handle_line(int sock, const char* line) {
 
   const int id = stratum_parse_id(line);
   if (id == 1 && strstr(line, "\"result\"") != NULL) {
-    stratum_parse_subscribe_response(line);
+    if (stratum_parse_subscribe_response(line)) {
+      stratum_process_pending_notify();
+    }
     return;
   }
   if (id >= 1000) {
