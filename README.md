@@ -11,7 +11,7 @@
 - Chip: ESP32-WROOM-32, classic ESP32 target.
 - Default display: SSD1306 128x64 I2C OLED, address 0x3c ([Amazon](https://www.amazon.com/dp/B0BFDHWZB8)).
 - LCD build display: ideaspark ESP32 1.9 inch LCD with ST7789 controller, 320x170 ([Amazon](https://www.amazon.com/dp/B0D6QXC813)).
-- These displays are often available for less from other sites.
+- These boards are often available for less from other sites.
 
 - Average mining speed: 620 kH/s, April 2026.
 - 740 KiB binary
