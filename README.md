@@ -23,6 +23,8 @@
 | --- | --- | --- | --- |
 | ![M45 Core OLED display](oled.png) | ![M45 Core ideaspark 1.9 inch LCD display](lcd.png) | ![M45 Core stats web UI](stats.png) | ![M45 Core settings web UI](settings.png) |
 
+[Example "block found" screens](https://www.youtube.com/watch?v=FBJSWs7Cxi0).
+
 [web firmware flash tool](https://distortions81.github.io/M45-Core-Firmware/).
 
 ## Requirements

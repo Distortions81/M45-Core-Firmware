@@ -29,6 +29,7 @@ char g_sta_ip[16] = "";
 bool g_sta_connected = false;
 stratum_runtime_t g_stratum_runtime;
 mining_job_t g_mining_job;
+uint32_t g_block_alert_dismissed_blocks = 0;
 uint64_t g_boot_us = 0;
 
 static const char* TAG = "app";
@@ -347,7 +348,35 @@ static bool record_display_input(int64_t now) {
   return was_sleeping;
 }
 
+static bool block_alert_display_active_now(int64_t now) {
+  (void)now;
+  if (!g_system.block_alerts ||
+      g_stratum_runtime.found_blocks == 0 ||
+      g_stratum_runtime.found_blocks <= g_block_alert_dismissed_blocks ||
+      g_stratum_runtime.last_found_block_us == 0) {
+    return false;
+  }
+  return true;
+}
+
+static bool dismiss_block_alert_display(int64_t now) {
+  if (!block_alert_display_active_now(now)) {
+    return false;
+  }
+  g_block_alert_dismissed_blocks = g_stratum_runtime.found_blocks;
+  request_display_refresh();
+  return true;
+}
+
 static void update_display_sleep_state(int64_t now) {
+  if (block_alert_display_active_now(now)) {
+    if (display_is_sleeping()) {
+      display_wake();
+      request_display_refresh();
+    }
+    g_last_display_input_us = now;
+    return;
+  }
   const int64_t timeout_us = display_sleep_timeout_us();
   if (timeout_us == 0) {
     if (display_is_sleeping()) {
@@ -369,6 +398,10 @@ static void update_display_sleep_state(int64_t now) {
 static bool should_refresh_display(int64_t now) {
   if (g_display_refresh_requested) {
     return true;
+  }
+
+  if (block_alert_display_active_now(now)) {
+    return now - g_last_display_refresh_us >= 1000000LL;
   }
 
   if (!g_sta_connected) {
@@ -463,7 +496,9 @@ static void factory_reset_button_task(void* arg) {
     } else {
       if (pressed_since != 0 && !long_press_handled && !consume_current_press) {
         record_display_input(now);
-        oled_next_page();
+        if (!dismiss_block_alert_display(now)) {
+          oled_next_page();
+        }
         request_display_refresh();
       }
       pressed_since = 0;
@@ -569,6 +604,21 @@ static void configure_task_watchdog(void) {
 #endif
 }
 
+static void seed_test_block_found(void) {
+#if APP_TEST_BLOCK_FOUND
+  g_system.block_alerts = 1;
+  g_stratum_runtime.found_blocks = 1;
+  g_stratum_runtime.last_found_block_nonce = 0x1a2b3c4dUL;
+  g_stratum_runtime.last_found_block_share_difficulty = 1000000UL;
+  g_stratum_runtime.last_found_block_us = (uint64_t)esp_timer_get_time();
+  copy_str(g_stratum_runtime.last_found_block_hash,
+           sizeof(g_stratum_runtime.last_found_block_hash),
+           "000000000000000000000000000000000000000000000000000000001a2b3c4d");
+  request_display_refresh();
+  APP_SERIAL_LOGF("app: seeded test block candidate alert\n");
+#endif
+}
+
 void app_main(void) {
   esp_log_level_set("*", ESP_LOG_NONE);
   APP_SERIAL_LOGF("app: boot\n");
@@ -609,6 +659,7 @@ void app_main(void) {
            g_stratum.suggested_difficulty[0] != '\0' ? g_stratum.suggested_difficulty : "0.0000000000");
   run_first_boot_hash_benchmark();
   g_stratum_runtime.hashes_per_second = g_stratum.benchmark_hashes_per_second;
+  seed_test_block_found();
   APP_SERIAL_LOGF("app: benchmark/settings ready\n");
   if (strcmp(g_stratum_runtime.current_difficulty, "0.0000000000") == 0 &&
       g_stratum.suggested_difficulty[0] != '\0') {
@@ -632,13 +683,6 @@ void app_main(void) {
   while (true) {
     const int64_t now = esp_timer_get_time();
     update_display_sleep_state(now);
-    if (g_system.block_alerts &&
-        g_stratum_runtime.found_blocks != g_last_display_found_blocks &&
-        display_is_sleeping()) {
-      display_wake();
-      g_last_display_input_us = now;
-      request_display_refresh();
-    }
     if (!display_is_sleeping() && should_refresh_display(now)) {
       oled_update_status();
       record_display_refresh(now);

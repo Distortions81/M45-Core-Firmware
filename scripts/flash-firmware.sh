@@ -17,6 +17,8 @@ Options:
                  Flash firmware for ideaspark ESP32 1.9 inch ST7789 LCD board.
   --lcd-debug-dirty-rects
                  Draw red/cyan LCD dirty-rectangle outlines for debugging.
+  --test-block-found
+                 Seed a synthetic block candidate alert at boot.
   --monitor      Open the serial monitor after a successful upload.
   --clean        Remove previous ESP-IDF build outputs before flashing.
   -h, --help     Show this help text.
@@ -30,6 +32,7 @@ clean=false
 build_dir_set=false
 ideaspark_19_lcd=false
 lcd_debug_dirty_rects=false
+test_block_found=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -51,6 +54,10 @@ while [[ $# -gt 0 ]]; do
     --lcd-debug-dirty-rects)
       ideaspark_19_lcd=true
       lcd_debug_dirty_rects=true
+      shift
+      ;;
+    --test-block-found)
+      test_block_found=true
       shift
       ;;
     --monitor)
@@ -76,6 +83,9 @@ cd "${ROOT_DIR}"
 if [[ "${ideaspark_19_lcd}" == "true" && "${build_dir_set}" == "false" ]]; then
   build_dir="build-ideaspark"
 fi
+if [[ "${test_block_found}" == "true" && "${build_dir_set}" == "false" ]]; then
+  build_dir="${build_dir}-test-block"
+fi
 
 if [[ "${clean}" == "true" ]]; then
   log "cleaning previous build outputs"
@@ -92,6 +102,11 @@ if [[ "${lcd_debug_dirty_rects}" == "true" ]]; then
   idf_args+=(-DAPP_LCD_DEBUG_DIRTY_RECTS=1)
 else
   idf_args+=(-DAPP_LCD_DEBUG_DIRTY_RECTS=0)
+fi
+if [[ "${test_block_found}" == "true" ]]; then
+  idf_args+=(-DAPP_TEST_BLOCK_FOUND=1)
+else
+  idf_args+=(-DAPP_TEST_BLOCK_FOUND=0)
 fi
 
 if [[ -n "${upload_port}" ]]; then

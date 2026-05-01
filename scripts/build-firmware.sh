@@ -18,6 +18,8 @@ Options:
                    Build for ideaspark ESP32 1.9 inch ST7789 LCD board.
   --lcd-debug-dirty-rects
                    Draw red/cyan LCD dirty-rectangle outlines for debugging.
+  --test-block-found
+                   Seed a synthetic block candidate alert at boot.
   --synthetic-hashes-per-task N
                    Override fixed hashes per benchmark worker task.
   --mine-batch N   Override runtime Stratum nonce batch size.
@@ -33,6 +35,7 @@ clean=false
 synthetic=false
 ideaspark_19_lcd=false
 lcd_debug_dirty_rects=false
+test_block_found=false
 synthetic_hashes_per_task=""
 mine_batch=""
 yield_batches=""
@@ -60,6 +63,10 @@ while [[ $# -gt 0 ]]; do
     --lcd-debug-dirty-rects)
       ideaspark_19_lcd=true
       lcd_debug_dirty_rects=true
+      shift
+      ;;
+    --test-block-found)
+      test_block_found=true
       shift
       ;;
     --synthetic-hashes-per-task)
@@ -99,6 +106,9 @@ fi
 if [[ "${ideaspark_19_lcd}" == "true" && "${build_dir_set}" == "false" ]]; then
   build_dir="build-ideaspark"
 fi
+if [[ "${test_block_found}" == "true" && "${build_dir_set}" == "false" ]]; then
+  build_dir="${build_dir}-test-block"
+fi
 
 if [[ "${clean}" == "true" ]]; then
   log "cleaning previous build outputs"
@@ -124,6 +134,11 @@ if [[ "${lcd_debug_dirty_rects}" == "true" ]]; then
   idf_args+=(-DAPP_LCD_DEBUG_DIRTY_RECTS=1)
 else
   idf_args+=(-DAPP_LCD_DEBUG_DIRTY_RECTS=0)
+fi
+if [[ "${test_block_found}" == "true" ]]; then
+  idf_args+=(-DAPP_TEST_BLOCK_FOUND=1)
+else
+  idf_args+=(-DAPP_TEST_BLOCK_FOUND=0)
 fi
 if [[ -n "${synthetic_hashes_per_task}" ]]; then
   idf_args+=(-DAPP_SYNTHETIC_HASHES_PER_TASK="${synthetic_hashes_per_task}")

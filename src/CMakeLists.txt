@@ -114,6 +114,11 @@ if(APP_ENABLE_SERIAL_LOGS)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_ENABLE_SERIAL_LOGS=1)
 endif()
 
+option(APP_TEST_BLOCK_FOUND "Seed a synthetic block candidate alert at boot" OFF)
+if(APP_TEST_BLOCK_FOUND)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_TEST_BLOCK_FOUND=1)
+endif()
+
 if(APP_DISPLAY_IDEASPARK_ESP32_19_LCD)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_DISPLAY_IDEASPARK_ESP32_19_LCD=1)
 endif()

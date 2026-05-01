@@ -46,6 +46,10 @@
 #define APP_ENABLE_SERIAL_LOGS 0
 #endif
 
+#ifndef APP_TEST_BLOCK_FOUND
+#define APP_TEST_BLOCK_FOUND 0
+#endif
+
 #if APP_ENABLE_SERIAL_LOGS
 #define APP_SERIAL_LOGF(...) printf(__VA_ARGS__)
 #else
@@ -246,6 +250,7 @@ extern char g_sta_ip[16];
 extern bool g_sta_connected;
 extern stratum_runtime_t g_stratum_runtime;
 extern mining_job_t g_mining_job;
+extern uint32_t g_block_alert_dismissed_blocks;
 extern uint64_t g_boot_us;
 
 void copy_str(char* dest, size_t dest_size, const char* src);

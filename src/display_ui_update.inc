@@ -9,6 +9,10 @@ void oled_update_status(void) {
   const int64_t now = esp_timer_get_time();
   const bool show_block_alert = block_alert_display_active(now);
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
+  if (show_block_alert) {
+    lcd_flush_block_found_page(now);
+    return;
+  }
   if (g_display_page == 1 && !show_block_alert) {
     lcd_flush_fancy_runtime_page();
     return;
@@ -46,8 +50,9 @@ void oled_update_status(void) {
     }
     oled_draw_wifi_wait_page();
   } else if (show_block_alert) {
-    if (g_runtime_inverted) {
-      g_runtime_inverted = false;
+    const bool alert_inverted = ((now / 1000000LL) & 1LL) != 0;
+    if (g_runtime_inverted != alert_inverted) {
+      g_runtime_inverted = alert_inverted;
       oled_apply_runtime_inversion();
     }
     oled_draw_block_found_page();

@@ -407,31 +407,100 @@ static void oled_draw_runtime_page(void) {
 }
 
 static bool block_alert_display_active(int64_t now) {
+  (void)now;
   if (!g_system.block_alerts ||
       g_stratum_runtime.found_blocks == 0 ||
+      g_stratum_runtime.found_blocks <= g_block_alert_dismissed_blocks ||
       g_stratum_runtime.last_found_block_us == 0) {
     return false;
   }
-  const int64_t found_us = (int64_t)g_stratum_runtime.last_found_block_us;
-  return now >= found_us && now - found_us < BLOCK_ALERT_DISPLAY_US;
+  return true;
+}
+
+static void block_alert_hash_label(char* out, size_t out_size) {
+  const size_t len = strlen(g_stratum_runtime.last_found_block_hash);
+  if (len >= 8) {
+    snprintf(out, out_size, "HASH ..%s", g_stratum_runtime.last_found_block_hash + len - 8);
+  } else {
+    snprintf(out, out_size, "COUNT %lu", (unsigned long)g_stratum_runtime.found_blocks);
+  }
 }
 
 static void oled_draw_block_found_page(void) {
-  char blocks[24];
+  char hash[24];
   char diff[24];
-  snprintf(blocks,
-           sizeof(blocks),
-           "COUNT %lu",
-           (unsigned long)g_stratum_runtime.found_blocks);
+  block_alert_hash_label(hash, sizeof(hash));
   snprintf(diff,
            sizeof(diff),
            "DIFF %lu",
            (unsigned long)g_stratum_runtime.last_found_block_share_difficulty);
   oled_draw_centered_text(5, "BLOCK", 2);
-  oled_draw_centered_text(23, "CANDIDATE", 2);
-  oled_draw_centered_text(45, blocks, 1);
+  oled_draw_centered_text(23, "FOUND", 2);
+  oled_draw_centered_text(45, hash, 1);
   oled_draw_centered_text(56, diff, 1);
 }
+
+#if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
+static uint16_t lcd_block_alert_background(int64_t now) {
+  static const uint16_t colors[] = {
+      LCD_RGB565_ALERT_RED,
+      LCD_RGB565_ALERT_YELLOW,
+      LCD_RGB565_ALERT_GREEN,
+      LCD_RGB565_ALERT_CYAN,
+      LCD_RGB565_ALERT_BLUE,
+      LCD_RGB565_ALERT_PURPLE,
+  };
+  const uint32_t phase = (uint32_t)((now / 1000000LL) % (int64_t)(sizeof(colors) / sizeof(colors[0])));
+  return colors[phase];
+}
+
+static void lcd_draw_centered_alert_text_line(int line_y,
+                                              int y,
+                                              const char* text,
+                                              uint16_t color) {
+  const int width = lcd_text_width(text);
+  const int x = width < LCD_WIDTH ? (LCD_WIDTH - width) / 2 : 0;
+  lcd_draw_text_line(line_y, x, y, text, color, LCD_WIDTH - x);
+}
+
+static void lcd_flush_block_found_page(int64_t now) {
+  char hash[24];
+  char diff[24];
+  block_alert_hash_label(hash, sizeof(hash));
+  snprintf(diff,
+           sizeof(diff),
+           "DIFF %lu",
+           (unsigned long)g_stratum_runtime.last_found_block_share_difficulty);
+  const uint16_t background = lcd_block_alert_background(now);
+  const uint16_t foreground = LCD_RGB565_WHITE;
+  for (int y0 = 0; y0 < LCD_HEIGHT; y0 += LCD_DIRTY_BUFFER_PIXELS / LCD_WIDTH) {
+    const int rows = LCD_DIRTY_BUFFER_PIXELS / LCD_WIDTH;
+    const int y1 = y0 + rows < LCD_HEIGHT ? y0 + rows : LCD_HEIGHT;
+    for (int y = y0; y < y1; ++y) {
+      for (int x = 0; x < LCD_WIDTH; ++x) {
+        g_lcd_line[x] = background;
+      }
+      lcd_draw_centered_alert_text_line(y, 28, "BLOCK", foreground);
+      lcd_draw_centered_alert_text_line(y, 58, "FOUND", foreground);
+      lcd_draw_centered_alert_text_line(y, 104, hash, foreground);
+      lcd_draw_centered_alert_text_line(y, 128, diff, foreground);
+      memcpy(&g_lcd_dirty_buffer[(size_t)(y - y0) * LCD_WIDTH], g_lcd_line, LCD_WIDTH * sizeof(g_lcd_line[0]));
+    }
+    if (!oled_check(esp_lcd_panel_draw_bitmap(g_oled_panel, 0, y0, LCD_WIDTH, y1, g_lcd_dirty_buffer),
+                    "ST7789 block alert")) {
+      g_oled_panel = NULL;
+      return;
+    }
+    if (xSemaphoreTake(g_lcd_transfer_done, pdMS_TO_TICKS(1000)) != pdTRUE) {
+      ESP_LOGW(TAG, "ST7789 block alert wait timed out");
+      g_oled_panel = NULL;
+      return;
+    }
+  }
+  g_lcd_full_refresh_needed = true;
+  g_lcd_graph_force_full = true;
+}
+#endif
 
 #if !APP_DISPLAY_IDEASPARK_ESP32_19_LCD
 static uint8_t oled_graph_quantize_level(uint32_t hashes_per_second) {

@@ -108,7 +108,7 @@
     <h1>{{DEVICE_NAME}} Stats</h1>
     <div id="block-alert" class="block-alert" hidden>
       <div>
-        <strong>Possible block found</strong>
+        <strong>Block found</strong>
         <span data-block-alert-text></span>
         <code data-block-alert-hash hidden></code>
       </div>
@@ -211,7 +211,7 @@
     const blockAlertDismiss=document.getElementById('block-alert-dismiss');
     const blockAlertText=document.querySelector('[data-block-alert-text]');
     const blockAlertHash=document.querySelector('[data-block-alert-hash]');
-    const dismissedBlockStorageKey='m45.dismissedFoundBlocks';
+    const dismissedBlockStorageKey='m45.dismissedBlockAlert';
     const initialBlockData={
       found_blocks:'{{FOUND_BLOCKS}}',
       last_found_block_nonce:'{{LAST_FOUND_BLOCK_NONCE}}',
@@ -300,18 +300,25 @@
       }
     }
 
-    function dismissedBlockCount(){
+    function blockAlertId(data){
+      const foundBlocks=Number(data.found_blocks)||0;
+      const hash=data.last_found_block_hash||'';
+      const nonce=data.last_found_block_nonce||'';
+      const difficulty=data.last_found_block_difficulty||'';
+      return [foundBlocks,hash,nonce,difficulty].join('|');
+    }
+
+    function dismissedBlockAlertId(){
       try{
-        const count=Number(localStorage.getItem(dismissedBlockStorageKey));
-        return Number.isFinite(count)&&count>0?count:0;
+        return localStorage.getItem(dismissedBlockStorageKey)||'';
       }catch(error){
-        return 0;
+        return '';
       }
     }
 
-    function setDismissedBlockCount(count){
+    function setDismissedBlockAlertId(id){
       try{
-        localStorage.setItem(dismissedBlockStorageKey,String(count));
+        localStorage.setItem(dismissedBlockStorageKey,id);
       }catch(error){}
     }
 
@@ -324,18 +331,20 @@
         return;
       }
       const foundBlocks=Number(data.found_blocks)||0;
+      const alertId=blockAlertId(data);
       blockAlert.dataset.foundBlocks=String(foundBlocks);
-      if(!blockAlertsEnabled(data.block_alerts_enabled)||foundBlocks<=dismissedBlockCount()){
+      blockAlert.dataset.alertId=alertId;
+      if(!blockAlertsEnabled(data.block_alerts_enabled)||foundBlocks<=0||alertId===dismissedBlockAlertId()){
         blockAlert.hidden=true;
         return;
       }
       const nonce=data.last_found_block_nonce||'0x00000000';
       const difficulty=Number(data.last_found_block_difficulty)||0;
-      const countText=foundBlocks===1?'This miner found a block candidate.':'This miner found '+foundBlocks+' block candidates.';
-      blockAlertText.textContent=countText+' The pool and network still need to accept it. Nonce '+nonce+(difficulty>0?', share diff '+difficulty+'.':'.');
+      const countText=foundBlocks===1?'This miner found a block.':'This miner found '+foundBlocks+' blocks.';
+      blockAlertText.textContent=countText+' The pool and network still need to confirm the candidate. Nonce '+nonce+(difficulty>0?', share diff '+difficulty+'.':'.');
       if(blockAlertHash){
         const hash=data.last_found_block_hash||'';
-        blockAlertHash.textContent=hash?'Hash '+hash:'';
+        blockAlertHash.textContent=hash?'Block hash '+hash:'';
         blockAlertHash.hidden=!hash;
       }
       blockAlert.hidden=false;
@@ -550,7 +559,7 @@
     if(payoutWarning){applyPayoutStatus(payoutWarning.dataset.payoutStatus,'{{PAYOUT_PERCENT}}');}
     if(blockAlertDismiss){
       blockAlertDismiss.addEventListener('click',()=>{
-        setDismissedBlockCount(Number(blockAlert.dataset.foundBlocks)||0);
+        setDismissedBlockAlertId(blockAlert.dataset.alertId||'');
         blockAlert.hidden=true;
       });
     }
