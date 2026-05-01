@@ -196,6 +196,8 @@ static esp_err_t stats_page_handler(httpd_req_t* req) {
   values[count++] = (template_value_t){"PAYOUT_STATUS_ID", payout_status_id()};
   values[count++] = (template_value_t){"PAYOUT_STATUS_TEXT", payout_status};
   values[count++] = (template_value_t){"PAYOUT_PERCENT", payout_percent};
+  values[count++] = (template_value_t){
+      "PAYOUT_PERCENT_HIDDEN", g_stratum_runtime.payout_status == STRATUM_PAYOUT_STATUS_UNCHECKED ? "hidden" : ""};
   values[count++] = (template_value_t){"FREE_HEAP", free_heap};
   values[count++] = (template_value_t){"MIN_FREE_HEAP", min_free_heap};
   values[count++] = (template_value_t){"LARGEST_FREE_BLOCK", largest_free_block};

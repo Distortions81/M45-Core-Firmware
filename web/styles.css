@@ -129,15 +129,32 @@ input{
 .page-footer{
   max-width:560px;
   margin:18px auto 0;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
   color:var(--muted);
   font-size:13px;
   text-align:center;
 }
 
 .page-footer a{
+  display:inline-flex;
+  align-items:center;
+  min-height:30px;
+  padding:5px 10px;
+  border:1px solid var(--panel-border);
+  border-radius:999px;
+  background:var(--panel-soft);
   color:inherit;
-  text-decoration:underline;
-  text-underline-offset:3px;
+  font-weight:700;
+  line-height:1;
+  text-decoration:none;
+}
+
+.page-footer a:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
 }
 
 :root[data-theme="dark"] .toolbar .active{

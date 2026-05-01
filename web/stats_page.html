@@ -112,7 +112,7 @@
           </details>
         </div>
         <div class="value value-small" data-stat="payout_warning">{{PAYOUT_STATUS_TEXT}}</div>
-        <div class="value value-small" data-stat="payout_percent">{{PAYOUT_PERCENT}} to configured wallet</div>
+        <div class="value value-small" data-stat="payout_percent" {{PAYOUT_PERCENT_HIDDEN}}>{{PAYOUT_PERCENT}} to configured wallet</div>
       </div>
       <div class="stat">
         <span class="label">Shares/min</span>
@@ -251,7 +251,11 @@
         payoutWarning.dataset.payoutStatus=status||'unchecked';
       }
       if(statNodes.payout_warning){statNodes.payout_warning.textContent=payoutStatusText(status);}
-      if(statNodes.payout_percent){statNodes.payout_percent.textContent=(percent||'0.00%')+' to configured wallet';}
+      if(statNodes.payout_percent){
+        const showPercent=status&&status!=='unchecked';
+        statNodes.payout_percent.hidden=!showPercent;
+        statNodes.payout_percent.textContent=showPercent?(percent||'0.00%')+' to configured wallet':'';
+      }
     }
 
     function formatBytes(value){
