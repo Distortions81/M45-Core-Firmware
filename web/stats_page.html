@@ -63,6 +63,26 @@
       overflow:hidden;
     }
     .sparkline-pill canvas{display:block;width:100%;height:68px;}
+    .block-alert{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin:0 0 12px;
+      border:1px solid #f59e0b;
+      border-radius:8px;
+      background:#fffbeb;
+      color:#78350f;
+      padding:12px;
+    }
+    .block-alert[hidden]{display:none;}
+    .block-alert strong{display:block;margin-bottom:4px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;}
+    .block-alert span{display:block;font-size:13px;line-height:1.35;font-weight:700;}
+    .block-alert code{display:block;margin-top:5px;font-size:11px;line-height:1.3;overflow-wrap:anywhere;color:inherit;background:rgba(120,53,15,.08);}
+    .block-alert-dismiss{flex:0 0 auto;border:0;border-radius:8px;background:#78350f;color:#fff;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;}
+    :root[data-theme="dark"] .block-alert{background:#451a03;border-color:#b45309;color:#fde68a;}
+    :root[data-theme="dark"] .block-alert code{background:rgba(253,230,138,.08);}
+    :root[data-theme="dark"] .block-alert-dismiss{background:#fde68a;color:#451a03;}
     @media (max-width: 640px){
       h1{font-size:20px;margin-bottom:10px;}
       .grid{gap:8px;}
@@ -76,6 +96,8 @@
       .value-small{font-size:11px;}
       .sparkline-pill{height:48px;margin-bottom:6px;}
       .sparkline-pill canvas{height:48px;}
+      .block-alert{display:grid;gap:10px;padding:10px;}
+      .block-alert-dismiss{width:100%;}
       .muted{margin:10px 0 0;}
     }
   </style>
@@ -84,6 +106,14 @@
   {{TOOLBAR}}
   <div class="card">
     <h1>{{DEVICE_NAME}} Stats</h1>
+    <div id="block-alert" class="block-alert" hidden>
+      <div>
+        <strong>Possible block found</strong>
+        <span data-block-alert-text></span>
+        <code data-block-alert-hash hidden></code>
+      </div>
+      <button id="block-alert-dismiss" class="block-alert-dismiss" type="button">Dismiss</button>
+    </div>
     <div class="grid">
       <div class="stat stat-wide">
         <span class="label">Hashrate</span>
@@ -177,6 +207,18 @@
     const systemStats=document.getElementById('system-stats');
     const graphContext=graph.getContext('2d');
     const payoutWarning=document.querySelector('[data-payout-warning]');
+    const blockAlert=document.getElementById('block-alert');
+    const blockAlertDismiss=document.getElementById('block-alert-dismiss');
+    const blockAlertText=document.querySelector('[data-block-alert-text]');
+    const blockAlertHash=document.querySelector('[data-block-alert-hash]');
+    const dismissedBlockStorageKey='m45.dismissedFoundBlocks';
+    const initialBlockData={
+      found_blocks:'{{FOUND_BLOCKS}}',
+      last_found_block_nonce:'{{LAST_FOUND_BLOCK_NONCE}}',
+      last_found_block_difficulty:'{{LAST_FOUND_BLOCK_DIFFICULTY}}',
+      last_found_block_hash:'{{LAST_FOUND_BLOCK_HASH}}',
+      block_alerts_enabled:'{{BLOCK_ALERTS_ENABLED}}'
+    };
     const hashrateHistory=[];
     const maxStoredHashrateSamples=360;
     const hashrateColumnWidth=2;
@@ -256,6 +298,47 @@
         statNodes.payout_percent.hidden=!showPercent;
         statNodes.payout_percent.textContent=showPercent?(percent||'0.00%')+' to configured wallet':'';
       }
+    }
+
+    function dismissedBlockCount(){
+      try{
+        const count=Number(localStorage.getItem(dismissedBlockStorageKey));
+        return Number.isFinite(count)&&count>0?count:0;
+      }catch(error){
+        return 0;
+      }
+    }
+
+    function setDismissedBlockCount(count){
+      try{
+        localStorage.setItem(dismissedBlockStorageKey,String(count));
+      }catch(error){}
+    }
+
+    function blockAlertsEnabled(value){
+      return value===true||value===1||String(value)==='1';
+    }
+
+    function applyBlockAlert(data){
+      if(!blockAlert){
+        return;
+      }
+      const foundBlocks=Number(data.found_blocks)||0;
+      blockAlert.dataset.foundBlocks=String(foundBlocks);
+      if(!blockAlertsEnabled(data.block_alerts_enabled)||foundBlocks<=dismissedBlockCount()){
+        blockAlert.hidden=true;
+        return;
+      }
+      const nonce=data.last_found_block_nonce||'0x00000000';
+      const difficulty=Number(data.last_found_block_difficulty)||0;
+      const countText=foundBlocks===1?'This miner found a block candidate.':'This miner found '+foundBlocks+' block candidates.';
+      blockAlertText.textContent=countText+' The pool and network still need to accept it. Nonce '+nonce+(difficulty>0?', share diff '+difficulty+'.':'.');
+      if(blockAlertHash){
+        const hash=data.last_found_block_hash||'';
+        blockAlertHash.textContent=hash?'Hash '+hash:'';
+        blockAlertHash.hidden=!hash;
+      }
+      blockAlert.hidden=false;
     }
 
     function formatBytes(value){
@@ -340,6 +423,7 @@
       if(statNodes.share_error_pct){statNodes.share_error_pct.textContent=formatPercent(data.rejected_shares,data.submitted_shares);}
       if(statNodes.rejected_shares){statNodes.rejected_shares.textContent=String(data.rejected_shares||0)+' rejected';}
       applyPayoutStatus(data.payout_status,data.payout_percent);
+      applyBlockAlert(data);
       const hashrate=Number(data.hashes_per_sec);
       if(Number.isFinite(hashrate)){
         hashrateHistory.push(hashrate);
@@ -363,7 +447,12 @@
         submitted_shares:fields[7]||'0',
         rejected_shares:fields[8]||'0',
         payout_status:fields[9]||'unchecked',
-        payout_percent:fields[10]||'0.00%'
+        payout_percent:fields[10]||'0.00%',
+        found_blocks:fields[11]||'0',
+        last_found_block_nonce:fields[12]||'0x00000000',
+        last_found_block_difficulty:fields[13]||'0',
+        last_found_block_hash:fields[14]||'',
+        block_alerts_enabled:fields[15]||'1'
       };
     }
 
@@ -459,6 +548,13 @@
     window.addEventListener('resize',drawHashrateGraph);
     if(systemStats){systemStats.addEventListener('toggle',syncMemoryRefresh);}
     if(payoutWarning){applyPayoutStatus(payoutWarning.dataset.payoutStatus,'{{PAYOUT_PERCENT}}');}
+    if(blockAlertDismiss){
+      blockAlertDismiss.addEventListener('click',()=>{
+        setDismissedBlockCount(Number(blockAlert.dataset.foundBlocks)||0);
+        blockAlert.hidden=true;
+      });
+    }
+    applyBlockAlert(initialBlockData);
     refreshStats();
     setInterval(refreshStats,15000);
   </script>

@@ -1,20 +1,25 @@
 /* Private implementation fragment included by web_server.c. */
 
 static esp_err_t stats_handler(httpd_req_t* req) {
-  char line[512];
+  char line[768];
   char uptime[16];
   char endpoint[128];
   char shares_per_min[16];
   char hashrate_average[64];
   char payout_percent[16];
+  char last_block_nonce[16];
   uptime_text(uptime, sizeof(uptime));
   pool_endpoint_text(endpoint, sizeof(endpoint));
   shares_per_min_text(shares_per_min, sizeof(shares_per_min));
   format_hashrate_average_text(hashrate_average, sizeof(hashrate_average));
   format_payout_percent_text(payout_percent, sizeof(payout_percent));
+  snprintf(last_block_nonce,
+           sizeof(last_block_nonce),
+           "0x%08lx",
+           (unsigned long)g_stratum_runtime.last_found_block_nonce);
   snprintf(line,
            sizeof(line),
-           "%s,%s,%s,%s,%u,%s,%s,%u,%u,%s,%s\n",
+           "%s,%s,%s,%s,%u,%s,%s,%u,%u,%s,%s,%u,%s,%u,%s,%u\n",
            uptime,
            pool_status_text(),
            endpoint,
@@ -25,7 +30,12 @@ static esp_err_t stats_handler(httpd_req_t* req) {
            (unsigned)g_stratum_runtime.submitted,
            (unsigned)g_stratum_runtime.rejected,
            payout_status_id(),
-           payout_percent);
+           payout_percent,
+           (unsigned)g_stratum_runtime.found_blocks,
+           last_block_nonce,
+           (unsigned)g_stratum_runtime.last_found_block_share_difficulty,
+           g_stratum_runtime.last_found_block_hash,
+           (unsigned)g_system.block_alerts);
   httpd_resp_set_type(req, "text/csv");
   set_common_response_headers(req);
   return httpd_resp_sendstr(req, line);
@@ -312,6 +322,7 @@ static esp_err_t system_handler(httpd_req_t* req) {
   }
   const system_settings_t previous = g_system;
   g_system.performance_mode = form_checked(body, "performance_mode") ? 1 : 0;
+  g_system.block_alerts = form_checked(body, "block_alerts") ? 1 : 0;
   if (!save_system_settings()) {
     g_system = previous;
     httpd_resp_set_status(req, "500 Internal Server Error");
@@ -319,6 +330,9 @@ static esp_err_t system_handler(httpd_req_t* req) {
     return ESP_OK;
   }
   apply_performance_mode();
+  if (previous.block_alerts != g_system.block_alerts) {
+    request_display_refresh();
+  }
   send_plain(req, "Device settings saved");
   return ESP_OK;
 }

@@ -98,6 +98,8 @@ static esp_err_t settings_page_handler(httpd_req_t* req) {
   values[count++] = (template_value_t){"DISPLAY_SLEEP_MAX_MINUTES", display_sleep_max_minutes};
   values[count++] =
       (template_value_t){"PERFORMANCE_MODE_CHECKED", g_system.performance_mode ? "checked" : ""};
+  values[count++] =
+      (template_value_t){"BLOCK_ALERTS_CHECKED", g_system.block_alerts ? "checked" : ""};
   values[count++] = (template_value_t){"STRATUM_PRIMARY_SERVER", primary_host};
   values[count++] = (template_value_t){"STRATUM_PRIMARY_PORT", primary_port};
   values[count++] = (template_value_t){"STRATUM_BACKUP_SERVER", backup_host};
@@ -119,6 +121,11 @@ static esp_err_t stats_page_handler(httpd_req_t* req) {
   char payout_percent[16];
   char payout_status[160];
   char pool_status[64];
+  char found_blocks[16];
+  char last_block_nonce[16];
+  char last_block_difficulty[16];
+  char last_block_hash[96];
+  char block_alerts_enabled[4];
   char endpoint_escaped[768];
   char difficulty_escaped[160];
   char difficulty_micro[32];
@@ -174,6 +181,17 @@ static esp_err_t stats_page_handler(httpd_req_t* req) {
                               sizeof(share_error_pct));
   format_payout_percent_text(payout_percent, sizeof(payout_percent));
   html_escape(payout_status_text(), payout_status, sizeof(payout_status));
+  snprintf(found_blocks, sizeof(found_blocks), "%u", (unsigned)g_stratum_runtime.found_blocks);
+  snprintf(last_block_nonce,
+           sizeof(last_block_nonce),
+           "0x%08lx",
+           (unsigned long)g_stratum_runtime.last_found_block_nonce);
+  snprintf(last_block_difficulty,
+           sizeof(last_block_difficulty),
+           "%u",
+           (unsigned)g_stratum_runtime.last_found_block_share_difficulty);
+  html_escape(g_stratum_runtime.last_found_block_hash, last_block_hash, sizeof(last_block_hash));
+  snprintf(block_alerts_enabled, sizeof(block_alerts_enabled), "%u", (unsigned)g_system.block_alerts);
   format_share_error_pct_text(g_stratum_runtime.hardware_hash_errors,
                               g_stratum_runtime.hardware_hash_checks,
                               hash_error_pct,
@@ -197,6 +215,11 @@ static esp_err_t stats_page_handler(httpd_req_t* req) {
   values[count++] = (template_value_t){"PAYOUT_STATUS_ID", payout_status_id()};
   values[count++] = (template_value_t){"PAYOUT_STATUS_TEXT", payout_status};
   values[count++] = (template_value_t){"PAYOUT_PERCENT", payout_percent};
+  values[count++] = (template_value_t){"FOUND_BLOCKS", found_blocks};
+  values[count++] = (template_value_t){"LAST_FOUND_BLOCK_NONCE", last_block_nonce};
+  values[count++] = (template_value_t){"LAST_FOUND_BLOCK_DIFFICULTY", last_block_difficulty};
+  values[count++] = (template_value_t){"LAST_FOUND_BLOCK_HASH", last_block_hash};
+  values[count++] = (template_value_t){"BLOCK_ALERTS_ENABLED", block_alerts_enabled};
   values[count++] = (template_value_t){
       "PAYOUT_PERCENT_HIDDEN", g_stratum_runtime.payout_status == STRATUM_PAYOUT_STATUS_UNCHECKED ? "hidden" : ""};
   values[count++] = (template_value_t){"FREE_HEAP", free_heap};

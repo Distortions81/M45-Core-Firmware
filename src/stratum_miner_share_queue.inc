@@ -123,7 +123,9 @@ static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint
            work->ntime);
   ++g_share_queue.count;
   ++g_stratum_runtime.found_shares;
-  const uint32_t share_difficulty = miner_share_difficulty(work, nonce);
+  uint8_t hash_be[32];
+  const uint32_t share_difficulty = miner_share_difficulty(work, nonce, hash_be);
+  const bool found_block = miner_hash_meets_block_target(work, hash_be);
   record_share_difficulty(share_difficulty);
   if (share_difficulty > g_stratum_runtime.best_share) {
     g_stratum_runtime.best_share = share_difficulty;
@@ -132,6 +134,9 @@ static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint
   xSemaphoreGive(g_share_queue_mutex);
   if (best_share_updated) {
     save_best_share();
+  }
+  if (found_block) {
+    record_found_block(nonce, share_difficulty, hash_be);
   }
   if (g_stratum_session_task_handle != NULL) {
     xTaskNotifyGive(g_stratum_session_task_handle);

@@ -96,6 +96,12 @@
         <span>Performance Mode</span>
       </label>
       <div class="setting-note">Keeps the processor at full speed. It may use more power and run warmer.</div>
+      <div class="section-label">Alerts</div>
+      <label class="toggle-row" for="block-alerts">
+        <input id="block-alerts" name="block_alerts" type="checkbox" {{BLOCK_ALERTS_CHECKED}}>
+        <span>Block candidate alerts</span>
+      </label>
+      <div class="setting-note">Show a web and display alert when this miner finds a possible block.</div>
       <div class="section-label">Mining</div>
       <label for="primary-server">Main mining pool</label>
       <div class="row field-stack">
@@ -135,6 +141,7 @@
       const displaySleepMinutes=document.getElementById('display-sleep-minutes');
       const displaySleepMinutesValue=document.getElementById('display-sleep-minutes-value');
       const performanceModeInput=document.getElementById('performance-mode');
+      const blockAlertsInput=document.getElementById('block-alerts');
       const actionToken='{{ACTION_TOKEN}}';
       displayBrightness.addEventListener('input',()=>{displayBrightnessValue.textContent=displayBrightness.value+'%';});
       function normalizedDisplaySleepMinutes(value){
@@ -153,6 +160,7 @@
         const displayBrightnessPct=displayBrightness.value;
         const displaySleepMinutesSetting=String(normalizedDisplaySleepMinutes(displaySleepMinutes.value));
         const performanceMode=performanceModeInput.checked;
+        const blockAlerts=blockAlertsInput.checked;
         const primaryServer=document.getElementById('primary-server').value.trim();
         const primaryPort=document.getElementById('primary-port').value.trim();
         const backupServer=document.getElementById('backup-server').value.trim();
@@ -189,7 +197,8 @@
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
             body:new URLSearchParams({
-              ...(performanceMode?{performance_mode:'1'}:{})
+              ...(performanceMode?{performance_mode:'1'}:{}),
+              ...(blockAlerts?{block_alerts:'1'}:{})
             }).toString()
           });
           const systemMessage=await systemResponse.text();

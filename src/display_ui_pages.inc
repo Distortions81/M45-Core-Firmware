@@ -406,6 +406,33 @@ static void oled_draw_runtime_page(void) {
   oled_draw_split_lines(text_left, text_width, status, hashrate, uptime);
 }
 
+static bool block_alert_display_active(int64_t now) {
+  if (!g_system.block_alerts ||
+      g_stratum_runtime.found_blocks == 0 ||
+      g_stratum_runtime.last_found_block_us == 0) {
+    return false;
+  }
+  const int64_t found_us = (int64_t)g_stratum_runtime.last_found_block_us;
+  return now >= found_us && now - found_us < BLOCK_ALERT_DISPLAY_US;
+}
+
+static void oled_draw_block_found_page(void) {
+  char blocks[24];
+  char diff[24];
+  snprintf(blocks,
+           sizeof(blocks),
+           "COUNT %lu",
+           (unsigned long)g_stratum_runtime.found_blocks);
+  snprintf(diff,
+           sizeof(diff),
+           "DIFF %lu",
+           (unsigned long)g_stratum_runtime.last_found_block_share_difficulty);
+  oled_draw_centered_text(5, "BLOCK", 2);
+  oled_draw_centered_text(23, "CANDIDATE", 2);
+  oled_draw_centered_text(45, blocks, 1);
+  oled_draw_centered_text(56, diff, 1);
+}
+
 #if !APP_DISPLAY_IDEASPARK_ESP32_19_LCD
 static uint8_t oled_graph_quantize_level(uint32_t hashes_per_second) {
   if (hashes_per_second == 0) {

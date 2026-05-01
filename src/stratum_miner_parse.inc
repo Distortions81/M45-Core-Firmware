@@ -243,6 +243,9 @@ static bool stratum_prepare_job(json_span_t* values, size_t count) {
   memset(g_mining_job.header + 76, 0, 4);
   prepare_job_hashing(&g_mining_job);
   set_job_share_target(&g_mining_job, g_stratum_runtime.current_difficulty);
+  if (!set_job_block_target(&g_mining_job, nbits)) {
+    return false;
+  }
   g_mining_job.next_nonce = 0;
   g_mining_job.ready = true;
   if (!json_span_copy(prev_hash, g_stratum_runtime.current_block, sizeof(g_stratum_runtime.current_block))) {

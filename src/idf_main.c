@@ -47,6 +47,7 @@ static bool g_last_display_connected = false;
 static bool g_last_display_enabled = false;
 static bool g_last_display_using_backup = false;
 static bool g_last_display_had_hashrate = false;
+static uint32_t g_last_display_found_blocks = 0;
 static volatile bool g_display_refresh_requested = false;
 static char g_last_display_pool[sizeof(g_stratum_runtime.current_pool)];
 static char g_last_display_ip[sizeof(g_sta_ip)];
@@ -153,6 +154,7 @@ static void load_settings(void) {
   memset(&g_display, 0, sizeof(g_display));
   memset(&g_system, 0, sizeof(g_system));
   g_display.screensaver = 1;
+  g_system.block_alerts = 1;
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
   g_display.brightness_pct = 50;
 #else
@@ -213,9 +215,11 @@ static void load_settings(void) {
 
   if (nvs_open("system", NVS_READONLY, &nvs) == ESP_OK) {
     nvs_get_u8(nvs, "perf", &g_system.performance_mode);
+    nvs_get_u8(nvs, "block_alerts", &g_system.block_alerts);
     nvs_close(nvs);
   }
   g_system.performance_mode = g_system.performance_mode != 0 ? 1 : 0;
+  g_system.block_alerts = g_system.block_alerts != 0 ? 1 : 0;
 
   bool loaded_theme = false;
   if (nvs_open("theme", NVS_READONLY, &nvs) == ESP_OK) {
@@ -271,9 +275,10 @@ bool save_system_settings(void) {
     return false;
   }
   const esp_err_t mode_result = nvs_set_u8(nvs, "perf", g_system.performance_mode ? 1 : 0);
+  const esp_err_t alert_result = nvs_set_u8(nvs, "block_alerts", g_system.block_alerts ? 1 : 0);
   const esp_err_t commit_result = nvs_commit(nvs);
   nvs_close(nvs);
-  return mode_result == ESP_OK && commit_result == ESP_OK;
+  return mode_result == ESP_OK && alert_result == ESP_OK && commit_result == ESP_OK;
 }
 
 static void choose_suggested_difficulty(uint32_t hashes_per_second, char* out, size_t out_size) {
@@ -315,6 +320,7 @@ static void record_display_refresh(int64_t now) {
   g_last_display_enabled = g_stratum_runtime.enabled;
   g_last_display_using_backup = g_stratum_runtime.using_backup;
   g_last_display_had_hashrate = g_stratum_runtime.hashes_per_second > 0;
+  g_last_display_found_blocks = g_stratum_runtime.found_blocks;
   copy_str(g_last_display_pool, sizeof(g_last_display_pool), g_stratum_runtime.current_pool);
   copy_str(g_last_display_ip, sizeof(g_last_display_ip), g_sta_ip);
   copy_str(g_last_display_block, sizeof(g_last_display_block), g_stratum_runtime.current_block);
@@ -384,6 +390,7 @@ static bool should_refresh_display(int64_t now) {
       g_stratum_runtime.connected != g_last_display_connected ||
       g_stratum_runtime.enabled != g_last_display_enabled ||
       g_stratum_runtime.using_backup != g_last_display_using_backup ||
+      g_stratum_runtime.found_blocks != g_last_display_found_blocks ||
       strcmp(g_stratum_runtime.current_pool, g_last_display_pool) != 0 ||
       strcmp(g_stratum_runtime.current_block, g_last_display_block) != 0) {
     return true;
@@ -625,6 +632,13 @@ void app_main(void) {
   while (true) {
     const int64_t now = esp_timer_get_time();
     update_display_sleep_state(now);
+    if (g_system.block_alerts &&
+        g_stratum_runtime.found_blocks != g_last_display_found_blocks &&
+        display_is_sleeping()) {
+      display_wake();
+      g_last_display_input_us = now;
+      request_display_refresh();
+    }
     if (!display_is_sleeping() && should_refresh_display(now)) {
       oled_update_status();
       record_display_refresh(now);

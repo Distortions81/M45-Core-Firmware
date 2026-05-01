@@ -59,6 +59,7 @@
 #define FACTORY_RESET_GPIO APP_FACTORY_RESET_GPIO
 #define FACTORY_RESET_HOLD_MS 5000
 #define DISPLAY_SLEEP_MAX_MINUTES UINT16_MAX
+#define BLOCK_ALERT_DISPLAY_US (30LL * 60LL * 1000000LL)
 
 #define WIFI_CONNECT_TIMEOUT_MS 15000
 #define WIFI_RECONNECT_IDLE_MS 30000
@@ -178,6 +179,7 @@ typedef struct {
 
 typedef struct {
   uint8_t performance_mode;
+  uint8_t block_alerts;
 } system_settings_t;
 
 typedef struct {
@@ -190,17 +192,22 @@ typedef struct {
   uint32_t rejected;
   uint32_t submitted;
   uint32_t found_shares;
+  uint32_t found_blocks;
   uint32_t hardware_hash_checks;
   uint32_t hardware_hash_errors;
   uint32_t best_share;
   uint32_t current_minute_best_share;
   uint32_t last_completed_minute_best_share;
+  uint32_t last_found_block_nonce;
+  uint32_t last_found_block_share_difficulty;
   uint32_t hashes_per_second;
   uint64_t hashes_total;
+  uint64_t last_found_block_us;
   int64_t share_bucket_minute;
   int64_t last_completed_share_minute;
   char current_difficulty[24];
   char current_block[80];
+  char last_found_block_hash[65];
   stratum_payout_status_t payout_status;
   uint16_t payout_percent_x100;
   uint64_t connected_at_us;
@@ -222,6 +229,7 @@ typedef struct {
   uint32_t header_midstate[8];
   uint32_t header_tail_words[3];
   uint8_t share_target[32];
+  uint8_t block_target[32];
   uint32_t share_target_words[8];
   uint32_t next_nonce;
 } mining_job_t;

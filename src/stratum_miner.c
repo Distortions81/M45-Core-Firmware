@@ -79,6 +79,7 @@ typedef struct {
   uint32_t target_words[8] __attribute__((aligned(16)));
   uint32_t target_word0;
   uint32_t next_nonce;
+  uint8_t block_target[32];
   uint8_t extra_nonce2[16];
   uint8_t extra_nonce2_size;
   char block_hash[sizeof(g_stratum_runtime.current_block)];

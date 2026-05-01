@@ -6,8 +6,10 @@ void oled_update_status(void) {
   oled_apply_display_brightness();
   oled_apply_display_orientation();
   oled_apply_runtime_inversion();
+  const int64_t now = esp_timer_get_time();
+  const bool show_block_alert = block_alert_display_active(now);
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
-  if (g_display_page == 1) {
+  if (g_display_page == 1 && !show_block_alert) {
     lcd_flush_fancy_runtime_page();
     return;
   }
@@ -43,6 +45,12 @@ void oled_update_status(void) {
       oled_apply_runtime_inversion();
     }
     oled_draw_wifi_wait_page();
+  } else if (show_block_alert) {
+    if (g_runtime_inverted) {
+      g_runtime_inverted = false;
+      oled_apply_runtime_inversion();
+    }
+    oled_draw_block_found_page();
   } else if (g_stratum_runtime.enabled && !g_stratum_runtime.connected) {
     if (g_runtime_inverted) {
       g_runtime_inverted = false;

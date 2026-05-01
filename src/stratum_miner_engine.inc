@@ -39,6 +39,7 @@ static void miner_publish_current_job(bool preserve_nonce) {
     synthetic_hw_prepare_blocks(g_miner_work.hw_block0, g_miner_work.hw_block1, g_mining_job.header);
     memcpy(g_miner_work.target_words, g_mining_job.share_target_words, sizeof(g_miner_work.target_words));
     g_miner_work.target_word0 = g_mining_job.share_target_words[0];
+    memcpy(g_miner_work.block_target, g_mining_job.block_target, sizeof(g_miner_work.block_target));
     g_miner_work.next_nonce = next_nonce;
     g_miner_work.extra_nonce2_size = g_mining_job.extra_nonce2_size;
     memcpy(g_miner_work.extra_nonce2,

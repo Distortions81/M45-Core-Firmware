@@ -125,6 +125,50 @@ static void set_job_share_target(mining_job_t* job, const char* difficulty) {
   }
 }
 
+static bool target_is_nonzero(const uint8_t target[32]) {
+  for (size_t i = 0; i < 32; ++i) {
+    if (target[i] != 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool set_job_block_target(mining_job_t* job, json_span_t nbits) {
+  uint8_t compact[4];
+  size_t offset = 0;
+  memset(job->block_target, 0, sizeof(job->block_target));
+  if (nbits.len != 8 ||
+      !hex_span_to_bytes(nbits, compact, &offset, sizeof(compact)) ||
+      offset != sizeof(compact)) {
+    return false;
+  }
+
+  const uint8_t exponent = compact[0];
+  uint32_t mantissa = ((uint32_t)compact[1] << 16) |
+                      ((uint32_t)compact[2] << 8) |
+                      (uint32_t)compact[3];
+  if (mantissa == 0 || (compact[1] & 0x80U) != 0) {
+    return false;
+  }
+
+  if (exponent <= 3U) {
+    mantissa >>= 8U * (3U - exponent);
+    for (size_t i = 0; i < 3; ++i) {
+      job->block_target[31U - i] = (uint8_t)(mantissa >> (8U * i));
+    }
+  } else {
+    if (exponent > 32U) {
+      return false;
+    }
+    const size_t index = 32U - exponent;
+    job->block_target[index] = compact[1];
+    job->block_target[index + 1U] = compact[2];
+    job->block_target[index + 2U] = compact[3];
+  }
+  return target_is_nonzero(job->block_target);
+}
+
 static bool hash_meets_target(const uint8_t hash_le[32], const uint8_t target_be[32]) {
   for (size_t i = 0; i < 32; ++i) {
     const uint8_t hash_be = hash_le[31 - i];
@@ -253,14 +297,51 @@ static uint32_t difficulty_from_hash_be(const uint8_t hash_be[32]) {
   return quotient;
 }
 
-static uint32_t miner_share_difficulty(const miner_work_t* work, uint32_t nonce) {
+static uint32_t miner_share_difficulty(
+    const miner_work_t* work, uint32_t nonce, uint8_t hash_be[32]) {
   uint32_t second_state[8];
-  uint8_t hash_be[32];
   sha256d_midstate_second_state(work->midstate, work->tail_words, nonce, second_state);
   for (size_t i = 0; i < 8; ++i) {
     write_u32_be(hash_be + i * 4, miner_hash_target_word(second_state, i));
   }
   return difficulty_from_hash_be(hash_be);
+}
+
+static bool miner_hash_meets_block_target(const miner_work_t* work, const uint8_t hash_be[32]) {
+  return target_is_nonzero(work->block_target) &&
+         target_compare_be(hash_be, work->block_target) <= 0;
+}
+
+static void hash_be_to_hex(const uint8_t hash_be[32], char* out, size_t out_size) {
+  if (out_size < 65) {
+    if (out_size > 0) {
+      out[0] = '\0';
+    }
+    return;
+  }
+  for (size_t i = 0; i < 32; ++i) {
+    out[i * 2U] = hex_digit_fast(hash_be[i] >> 4);
+    out[i * 2U + 1U] = hex_digit_fast(hash_be[i]);
+  }
+  out[64] = '\0';
+}
+
+static void record_found_block(
+    uint32_t nonce, uint32_t share_difficulty, const uint8_t hash_be[32]) {
+  char hash_hex[65];
+  const uint64_t now_us = (uint64_t)esp_timer_get_time();
+  hash_be_to_hex(hash_be, hash_hex, sizeof(hash_hex));
+  portENTER_CRITICAL(&g_miner_stats_mux);
+  const uint32_t found_blocks = g_stratum_runtime.found_blocks + 1U;
+  g_stratum_runtime.last_found_block_nonce = nonce;
+  g_stratum_runtime.last_found_block_share_difficulty = share_difficulty;
+  g_stratum_runtime.last_found_block_us = now_us;
+  memcpy(g_stratum_runtime.last_found_block_hash,
+         hash_hex,
+         sizeof(g_stratum_runtime.last_found_block_hash));
+  g_stratum_runtime.found_blocks = found_blocks;
+  portEXIT_CRITICAL(&g_miner_stats_mux);
+  request_display_refresh();
 }
 
 static void save_best_share(void) {
