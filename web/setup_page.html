@@ -101,6 +101,7 @@
       const wifiErrorDialog=document.getElementById('wifi-error-dialog');
       const wifiErrorMessage=document.getElementById('wifi-error-message');
       const wifiErrorClose=document.getElementById('wifi-error-close');
+      const actionToken='{{ACTION_TOKEN}}';
       function showWifiError(message){
         wifiErrorMessage.textContent=message;
         if(wifiErrorDialog.showModal){
@@ -192,11 +193,24 @@
           networkMore.appendChild(fold);
         }
       }
+      function decodeSsidField(value){
+        let binary='';
+        try{
+          binary=window.atob(value);
+        }catch(_){
+          return '';
+        }
+        const bytes=new Uint8Array(binary.length);
+        for(let i=0;i<binary.length;i++){
+          bytes[i]=binary.charCodeAt(i);
+        }
+        return new TextDecoder().decode(bytes);
+      }
       function parseNetworksText(text){
         return text.split('\n').filter(Boolean).map((line)=>{
           const fields=line.split('\t');
           return {
-            ssid:fields[0]||'',
+            ssid:decodeSsidField(fields[0]||''),
             rssi:fields[1]||'0',
             channel:fields[2]||'?',
             auth_open:fields[3]==='1'
@@ -260,7 +274,8 @@
           try{
             const response=await fetch('/api/factory-reset',{
               method:'POST',
-              headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}
+              headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+              body:new URLSearchParams({action_token:actionToken}).toString()
             });
             const message=await response.text();
             if(!response.ok){

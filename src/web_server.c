@@ -10,6 +10,7 @@
 #include "esp_http_server.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
@@ -36,6 +37,7 @@ typedef struct {
 static const char* TAG = "web";
 static char g_networks_cache[20 * 128];
 static int64_t g_networks_cache_us = 0;
+static char g_action_token[33];
 typedef struct {
   int64_t time_us;
   uint64_t hashes_total;

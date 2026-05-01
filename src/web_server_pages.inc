@@ -11,6 +11,7 @@ static void add_common_template_values(
   values[(*count)++] = (template_value_t){"TOOLBAR", include_toolbar ? WEB_TOOLBAR_HTML : ""};
   values[(*count)++] = (template_value_t){"FOOTER", WEB_FOOTER_HTML};
   values[(*count)++] = (template_value_t){"THEME", theme};
+  values[(*count)++] = (template_value_t){"ACTION_TOKEN", action_token()};
   values[(*count)++] =
       (template_value_t){"STATS_ACTIVE", strcmp(active_page != NULL ? active_page : "", "stats") == 0 ? "active" : ""};
   values[(*count)++] = (template_value_t){

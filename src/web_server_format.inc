@@ -93,6 +93,37 @@ static bool parse_required_port(const char* text, uint16_t* out) {
   return true;
 }
 
+static bool pool_host_text_valid(const char* text, bool allow_empty) {
+  if (text == NULL || *text == '\0') {
+    return allow_empty;
+  }
+
+  const size_t len = strlen(text);
+  if (len > 95 || text[0] == '.' || text[0] == '-' || text[len - 1] == '.' ||
+      text[len - 1] == '-') {
+    return false;
+  }
+
+  bool previous_dot = false;
+  for (const char* cursor = text; *cursor != '\0'; ++cursor) {
+    const char ch = *cursor;
+    const bool valid_char = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+                            (ch >= '0' && ch <= '9') || ch == '.' || ch == '-';
+    if (!valid_char) {
+      return false;
+    }
+    if (ch == '.') {
+      if (previous_dot) {
+        return false;
+      }
+      previous_dot = true;
+    } else {
+      previous_dot = false;
+    }
+  }
+  return true;
+}
+
 static void format_bytes_text(size_t bytes, char* out, size_t out_size) {
   if (bytes >= 1024U * 1024U) {
     snprintf(out, out_size, "%.2f MiB", (double)bytes / (1024.0 * 1024.0));

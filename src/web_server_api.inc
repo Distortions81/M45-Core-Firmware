@@ -27,6 +27,7 @@ static esp_err_t stats_handler(httpd_req_t* req) {
            payout_status_id(),
            payout_percent);
   httpd_resp_set_type(req, "text/csv");
+  set_common_response_headers(req);
   return httpd_resp_sendstr(req, line);
 }
 
@@ -63,18 +64,43 @@ static esp_err_t memory_handler(httpd_req_t* req) {
            pool_uptime_pct,
            hash_error_pct);
   httpd_resp_set_type(req, "text/csv");
+  set_common_response_headers(req);
   return httpd_resp_sendstr(req, line);
 }
 
 static esp_err_t health_handler(httpd_req_t* req) {
   httpd_resp_set_type(req, "text/plain");
+  set_common_response_headers(req);
   return httpd_resp_sendstr(req, "ok");
+}
+
+static void append_network_ssid_field(char* out, size_t out_size, size_t* offset, const uint8_t* ssid, size_t ssid_size) {
+  static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  size_t ssid_len = 0;
+  while (ssid_len < ssid_size && ssid[ssid_len] != '\0') {
+    ssid_len++;
+  }
+  for (size_t i = 0; i < ssid_len; i += 3) {
+    if (*offset + 4 >= out_size) {
+      break;
+    }
+    const uint32_t b0 = ssid[i];
+    const uint32_t b1 = i + 1 < ssid_len ? ssid[i + 1] : 0;
+    const uint32_t b2 = i + 2 < ssid_len ? ssid[i + 2] : 0;
+    const uint32_t bits = (b0 << 16) | (b1 << 8) | b2;
+    out[(*offset)++] = alphabet[(bits >> 18) & 0x3f];
+    out[(*offset)++] = alphabet[(bits >> 12) & 0x3f];
+    out[(*offset)++] = i + 1 < ssid_len ? alphabet[(bits >> 6) & 0x3f] : '=';
+    out[(*offset)++] = i + 2 < ssid_len ? alphabet[bits & 0x3f] : '=';
+  }
+  out[*offset] = '\0';
 }
 
 static esp_err_t networks_handler(httpd_req_t* req) {
   const int64_t now = esp_timer_get_time();
   if (g_networks_cache[0] != '\0' && now - g_networks_cache_us < NETWORK_SCAN_CACHE_TTL_US) {
     httpd_resp_set_type(req, "text/plain");
+    set_common_response_headers(req);
     return httpd_resp_sendstr(req, g_networks_cache);
   }
 
@@ -109,10 +135,14 @@ static esp_err_t networks_handler(httpd_req_t* req) {
   g_networks_cache[0] = '\0';
   g_networks_cache_us = now;
   for (uint16_t i = 0; i < count && offset + 1 < sizeof(g_networks_cache); ++i) {
+    append_network_ssid_field(g_networks_cache,
+                              sizeof(g_networks_cache),
+                              &offset,
+                              records[i].ssid,
+                              sizeof(records[i].ssid));
     offset += snprintf(g_networks_cache + offset,
                        sizeof(g_networks_cache) - offset,
-                       "%s\t%d\t%d\t%d\n",
-                       (const char*)records[i].ssid,
+                       "\t%d\t%d\t%d\n",
                        records[i].rssi,
                        records[i].primary,
                        records[i].authmode == WIFI_AUTH_OPEN ? 1 : 0);
@@ -123,6 +153,7 @@ static esp_err_t networks_handler(httpd_req_t* req) {
   }
 
   httpd_resp_set_type(req, "text/plain");
+  set_common_response_headers(req);
   return httpd_resp_sendstr(req, g_networks_cache);
 }
 
@@ -131,8 +162,10 @@ static esp_err_t configure_handler(httpd_req_t* req) {
   char ssid[33];
   char password[65];
   char connect_error[160];
-  read_body(req, body, sizeof(body));
-  form_value(body, "ssid", ssid, sizeof(ssid));
+  if (!read_mutating_form_body(req, body, sizeof(body))) {
+    return ESP_OK;
+  }
+  form_text_value(body, "ssid", ssid, sizeof(ssid));
   form_value(body, "password", password, sizeof(password));
   if (ssid[0] == '\0') {
     httpd_resp_set_status(req, "400 Bad Request");
@@ -166,8 +199,15 @@ static esp_err_t stratum_handler(httpd_req_t* req) {
   char body[FORM_BODY_MAX];
   char value[128];
   uint16_t port = 0;
-  read_body(req, body, sizeof(body));
-  if (form_value(body, "primary_server", value, sizeof(value))) {
+  if (!read_mutating_form_body(req, body, sizeof(body))) {
+    return ESP_OK;
+  }
+  if (form_text_value(body, "primary_server", value, sizeof(value))) {
+    if (!pool_host_text_valid(value, false)) {
+      httpd_resp_set_status(req, "400 Bad Request");
+      send_plain(req, "Main pool host can only use letters, numbers, dot, and dash");
+      return ESP_OK;
+    }
     copy_str(g_stratum.primary_host, sizeof(g_stratum.primary_host), value);
   }
   if (form_value(body, "primary_port", value, sizeof(value))) {
@@ -178,7 +218,12 @@ static esp_err_t stratum_handler(httpd_req_t* req) {
     }
     g_stratum.primary_port = port;
   }
-  if (form_value(body, "backup_server", value, sizeof(value))) {
+  if (form_text_value(body, "backup_server", value, sizeof(value))) {
+    if (!pool_host_text_valid(value, true)) {
+      httpd_resp_set_status(req, "400 Bad Request");
+      send_plain(req, "Backup pool host can only use letters, numbers, dot, and dash");
+      return ESP_OK;
+    }
     copy_str(g_stratum.backup_host, sizeof(g_stratum.backup_host), value);
   }
   if (form_value(body, "backup_port", value, sizeof(value))) {
@@ -189,7 +234,7 @@ static esp_err_t stratum_handler(httpd_req_t* req) {
     }
     g_stratum.backup_port = port;
   }
-  if (form_value(body, "username", value, sizeof(value))) {
+  if (form_text_value(body, "username", value, sizeof(value))) {
     if (!stratum_identity_text_valid(value, true)) {
       httpd_resp_set_status(req, "400 Bad Request");
       send_plain(req, "Worker name can only use letters, numbers, dot, dash, and underscore");
@@ -197,7 +242,7 @@ static esp_err_t stratum_handler(httpd_req_t* req) {
     }
     copy_str(g_stratum.username, sizeof(g_stratum.username), value);
   }
-  if (form_value(body, "wallet_address", value, sizeof(value))) {
+  if (form_text_value(body, "wallet_address", value, sizeof(value))) {
     if (!stratum_identity_text_valid(value, false)) {
       httpd_resp_set_status(req, "400 Bad Request");
       send_plain(req, "Wallet can only use letters, numbers, dot, dash, and underscore");
@@ -205,7 +250,7 @@ static esp_err_t stratum_handler(httpd_req_t* req) {
     }
     copy_str(g_stratum.wallet, sizeof(g_stratum.wallet), value);
   }
-  if (form_value(body, "suggested_difficulty", value, sizeof(value))) {
+  if (form_text_value(body, "suggested_difficulty", value, sizeof(value))) {
     if (!stratum_difficulty_text_valid(value, true)) {
       httpd_resp_set_status(req, "400 Bad Request");
       send_plain(req, "suggested difficulty must be a positive decimal number");
@@ -225,7 +270,9 @@ static esp_err_t stratum_handler(httpd_req_t* req) {
 static esp_err_t display_handler(httpd_req_t* req) {
   char body[FORM_BODY_MAX];
   char value[8];
-  read_body(req, body, sizeof(body));
+  if (!read_mutating_form_body(req, body, sizeof(body))) {
+    return ESP_OK;
+  }
   const display_settings_t previous = g_display;
   g_display.flip_vertical = form_checked(body, "flip_vertical") ? 1 : 0;
   g_display.screensaver = form_checked(body, "runtime_screensaver") ? 1 : 0;
@@ -260,7 +307,9 @@ static esp_err_t display_handler(httpd_req_t* req) {
 
 static esp_err_t system_handler(httpd_req_t* req) {
   char body[FORM_BODY_MAX];
-  read_body(req, body, sizeof(body));
+  if (!read_mutating_form_body(req, body, sizeof(body))) {
+    return ESP_OK;
+  }
   const system_settings_t previous = g_system;
   g_system.performance_mode = form_checked(body, "performance_mode") ? 1 : 0;
   if (!save_system_settings()) {
@@ -277,7 +326,9 @@ static esp_err_t system_handler(httpd_req_t* req) {
 static esp_err_t theme_handler(httpd_req_t* req) {
   char body[FORM_BODY_MAX];
   char value[24];
-  read_body(req, body, sizeof(body));
+  if (!read_mutating_form_body(req, body, sizeof(body))) {
+    return ESP_OK;
+  }
   if (form_value(body, "theme", value, sizeof(value))) {
     const display_settings_t previous = g_display;
     set_color_theme(value, true);
@@ -291,7 +342,12 @@ static esp_err_t theme_handler(httpd_req_t* req) {
 
 static esp_err_t reboot_handler(httpd_req_t* req) {
   char body[64];
-  read_body(req, body, sizeof(body));
+  if (!read_mutating_form_body(req, body, sizeof(body))) {
+    return ESP_OK;
+  }
+  if (!require_action_token(req, body)) {
+    return ESP_OK;
+  }
   send_plain(req, "Rebooting");
   vTaskDelay(pdMS_TO_TICKS(300));
   esp_restart();
@@ -300,7 +356,12 @@ static esp_err_t reboot_handler(httpd_req_t* req) {
 
 static esp_err_t factory_reset_handler(httpd_req_t* req) {
   char body[64];
-  read_body(req, body, sizeof(body));
+  if (!read_mutating_form_body(req, body, sizeof(body))) {
+    return ESP_OK;
+  }
+  if (!require_action_token(req, body)) {
+    return ESP_OK;
+  }
   send_plain(req, "Reset complete. Rebooting...");
   vTaskDelay(pdMS_TO_TICKS(300));
   nvs_flash_erase();

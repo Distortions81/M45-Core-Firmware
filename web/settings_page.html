@@ -135,6 +135,7 @@
       const displaySleepMinutes=document.getElementById('display-sleep-minutes');
       const displaySleepMinutesValue=document.getElementById('display-sleep-minutes-value');
       const performanceModeInput=document.getElementById('performance-mode');
+      const actionToken='{{ACTION_TOKEN}}';
       displayBrightness.addEventListener('input',()=>{displayBrightnessValue.textContent=displayBrightness.value+'%';});
       function normalizedDisplaySleepMinutes(value){
         return Math.max(0,parseInt(value,10)||0);
@@ -228,7 +229,8 @@
         try{
           const response=await fetch('/api/reboot',{
             method:'POST',
-            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+            body:new URLSearchParams({action_token:actionToken}).toString()
           });
           const message=await response.text();
           if(!response.ok){
@@ -248,7 +250,8 @@
         try{
           const response=await fetch('/api/factory-reset',{
             method:'POST',
-            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+            body:new URLSearchParams({action_token:actionToken}).toString()
           });
           const message=await response.text();
           if(!response.ok){
