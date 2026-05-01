@@ -164,6 +164,7 @@ static const DRAM_ATTR uint32_t SHA256_INITIAL_STATE[8] = {
 #include "stratum_miner_sha.inc"
 #include "stratum_miner_protocol.inc"
 #include "stratum_miner_json_hex.inc"
+#include "stratum_miner_payout.inc"
 #include "stratum_miner_target.inc"
 #include "stratum_miner_hw_sha.inc"
 #include "stratum_miner_selfcheck.inc"

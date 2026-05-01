@@ -1,18 +1,20 @@
 /* Private implementation fragment included by web_server.c. */
 
 static esp_err_t stats_handler(httpd_req_t* req) {
-  char line[384];
+  char line[512];
   char uptime[16];
   char endpoint[128];
   char shares_per_min[16];
   char hashrate_average[64];
+  char payout_percent[16];
   uptime_text(uptime, sizeof(uptime));
   pool_endpoint_text(endpoint, sizeof(endpoint));
   shares_per_min_text(shares_per_min, sizeof(shares_per_min));
   format_hashrate_average_text(hashrate_average, sizeof(hashrate_average));
+  format_payout_percent_text(payout_percent, sizeof(payout_percent));
   snprintf(line,
            sizeof(line),
-           "%s,%s,%s,%s,%u,%s,%s,%u,%u\n",
+           "%s,%s,%s,%s,%u,%s,%s,%u,%u,%s,%s\n",
            uptime,
            pool_status_text(),
            endpoint,
@@ -21,7 +23,9 @@ static esp_err_t stats_handler(httpd_req_t* req) {
            hashrate_average,
            current_difficulty_text(),
            (unsigned)g_stratum_runtime.submitted,
-           (unsigned)g_stratum_runtime.rejected);
+           (unsigned)g_stratum_runtime.rejected,
+           payout_status_id(),
+           payout_percent);
   httpd_resp_set_type(req, "text/csv");
   return httpd_resp_sendstr(req, line);
 }

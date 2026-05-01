@@ -159,6 +159,15 @@ typedef struct {
   uint32_t benchmark_hashes_per_second;
 } stratum_settings_t;
 
+typedef enum {
+  STRATUM_PAYOUT_STATUS_UNCHECKED = 0,
+  STRATUM_PAYOUT_STATUS_OK,
+  STRATUM_PAYOUT_STATUS_LOW,
+  STRATUM_PAYOUT_STATUS_MISSING,
+  STRATUM_PAYOUT_STATUS_UNSUPPORTED_WALLET,
+  STRATUM_PAYOUT_STATUS_PARSE_ERROR,
+} stratum_payout_status_t;
+
 typedef struct {
   uint8_t flip_vertical;
   uint8_t screensaver;
@@ -192,6 +201,8 @@ typedef struct {
   int64_t last_completed_share_minute;
   char current_difficulty[24];
   char current_block[80];
+  stratum_payout_status_t payout_status;
+  uint16_t payout_percent_x100;
   uint64_t connected_at_us;
   uint64_t disconnected_at_us;
   uint64_t connected_total_us;

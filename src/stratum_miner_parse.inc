@@ -197,6 +197,7 @@ static bool stratum_prepare_job(json_span_t* values, size_t count) {
   }
 
   sha256d(coinbase, offset, merkle);
+  stratum_update_payout_from_coinbase(coinbase, offset);
 
   if (values[4].len >= 2 && values[4].start[0] == '[') {
     json_span_t branch_array = {

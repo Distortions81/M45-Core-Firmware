@@ -21,6 +21,14 @@
     .label{display:block;font-size:13px;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;}
     .value{font-size:21px;font-weight:700;overflow-wrap:anywhere;}
       .value-small{font-size:13px;line-height:1.25;color:var(--muted);font-weight:600;}
+    .payout-warning{border-color:var(--panel-border);background:var(--panel-soft);color:var(--text);}
+    .payout-warning.ok{border-color:#16a34a;background:#f0fdf4;color:#14532d;}
+    .payout-warning.caution{border-color:#f59e0b;background:#fffbeb;color:#78350f;}
+    .payout-warning.critical{border-color:#dc2626;background:#fef2f2;color:#7f1d1d;}
+    .payout-warning .value-small{color:inherit;}
+    :root[data-theme="dark"] .payout-warning.ok{background:#052e16;border-color:#15803d;color:#bbf7d0;}
+    :root[data-theme="dark"] .payout-warning.caution{background:#451a03;border-color:#b45309;color:#fde68a;}
+    :root[data-theme="dark"] .payout-warning.critical{background:#450a0a;border-color:#b91c1c;color:#fecaca;}
     .sparkline-pill{
       height:68px;
       margin:0 0 10px;
@@ -69,6 +77,11 @@
       <div class="stat stat-wide">
         <span class="label">Pool</span>
         <div class="value" data-stat="pool_endpoint">{{POOL_ENDPOINT}}</div>
+      </div>
+      <div class="stat stat-wide payout-warning" data-payout-warning data-payout-status="{{PAYOUT_STATUS_ID}}">
+        <span class="label">Coinbase payout</span>
+        <div class="value value-small" data-stat="payout_warning">{{PAYOUT_STATUS_TEXT}}</div>
+        <div class="value value-small" data-stat="payout_percent">{{PAYOUT_PERCENT}} to configured wallet</div>
       </div>
       <div class="stat">
         <span class="label">Shares/min</span>
@@ -132,6 +145,7 @@
     const graph=document.getElementById('hashrate-graph');
     const systemStats=document.getElementById('system-stats');
     const graphContext=graph.getContext('2d');
+    const payoutWarning=document.querySelector('[data-payout-warning]');
     const hashrateHistory=[];
     const maxStoredHashrateSamples=360;
     const hashrateColumnWidth=2;
@@ -175,6 +189,38 @@
         return '0.0%';
       }
       return ((top*100)/bottom).toFixed(1)+'%';
+    }
+
+    function payoutStatusText(status){
+      if(status==='missing'){
+        return 'Warning: wallet was not found in the coinbase outputs.';
+      }
+      if(status==='low'){
+        return 'Warning: wallet receives less than 97% of coinbase outputs.';
+      }
+      if(status==='unsupported'){
+        return 'Coinbase payout check unavailable for this wallet address.';
+      }
+      if(status==='parse_error'){
+        return 'Coinbase payout check could not parse the coinbase transaction.';
+      }
+      if(status==='ok'){
+        return 'Coinbase payout matches wallet.';
+      }
+      return 'Coinbase payout has not been checked yet.';
+    }
+
+    function applyPayoutStatus(status,percent){
+      if(payoutWarning){
+        const isCritical=status==='missing'||status==='low';
+        const isCaution=status==='unchecked'||status==='unsupported'||status==='parse_error';
+        payoutWarning.classList.toggle('ok',status==='ok');
+        payoutWarning.classList.toggle('caution',isCaution);
+        payoutWarning.classList.toggle('critical',isCritical);
+        payoutWarning.dataset.payoutStatus=status||'unchecked';
+      }
+      if(statNodes.payout_warning){statNodes.payout_warning.textContent=payoutStatusText(status);}
+      if(statNodes.payout_percent){statNodes.payout_percent.textContent=(percent||'0.00%')+' to configured wallet';}
     }
 
     function formatBytes(value){
@@ -258,6 +304,7 @@
       if(statNodes.submitted_shares){statNodes.submitted_shares.textContent=String(data.submitted_shares||0);}
       if(statNodes.share_error_pct){statNodes.share_error_pct.textContent=formatPercent(data.rejected_shares,data.submitted_shares);}
       if(statNodes.rejected_shares){statNodes.rejected_shares.textContent=String(data.rejected_shares||0)+' rejected';}
+      applyPayoutStatus(data.payout_status,data.payout_percent);
       const hashrate=Number(data.hashes_per_sec);
       if(Number.isFinite(hashrate)){
         hashrateHistory.push(hashrate);
@@ -279,7 +326,9 @@
         hashrate_average:fields[5]||'Average: gathering',
         current_difficulty:fields[6]||'0',
         submitted_shares:fields[7]||'0',
-        rejected_shares:fields[8]||'0'
+        rejected_shares:fields[8]||'0',
+        payout_status:fields[9]||'unchecked',
+        payout_percent:fields[10]||'0.00%'
       };
     }
 
@@ -374,6 +423,7 @@
 
     window.addEventListener('resize',drawHashrateGraph);
     if(systemStats){systemStats.addEventListener('toggle',syncMemoryRefresh);}
+    if(payoutWarning){applyPayoutStatus(payoutWarning.dataset.payoutStatus,'{{PAYOUT_PERCENT}}');}
     refreshStats();
     setInterval(refreshStats,15000);
   </script>

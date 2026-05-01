@@ -115,6 +115,8 @@ static esp_err_t stats_page_handler(httpd_req_t* req) {
   char submitted[16];
   char rejected[16];
   char share_error_pct[16];
+  char payout_percent[16];
+  char payout_status[160];
   char pool_status[64];
   char endpoint_escaped[768];
   char difficulty_escaped[160];
@@ -169,12 +171,14 @@ static esp_err_t stats_page_handler(httpd_req_t* req) {
                               g_stratum_runtime.submitted,
                               share_error_pct,
                               sizeof(share_error_pct));
+  format_payout_percent_text(payout_percent, sizeof(payout_percent));
+  html_escape(payout_status_text(), payout_status, sizeof(payout_status));
   format_share_error_pct_text(g_stratum_runtime.hardware_hash_errors,
                               g_stratum_runtime.hardware_hash_checks,
                               hash_error_pct,
                               sizeof(hash_error_pct));
 
-  template_value_t values[44];
+  template_value_t values[48];
   size_t count = 0;
   add_common_template_values(values, &count, true, "stats");
   values[count++] = (template_value_t){"DEVICE_NAME", device_name};
@@ -189,6 +193,9 @@ static esp_err_t stats_page_handler(httpd_req_t* req) {
   values[count++] = (template_value_t){"SUBMITTED_SHARES", submitted};
   values[count++] = (template_value_t){"REJECTED_SHARES", rejected};
   values[count++] = (template_value_t){"SHARE_ERROR_PCT", share_error_pct};
+  values[count++] = (template_value_t){"PAYOUT_STATUS_ID", payout_status_id()};
+  values[count++] = (template_value_t){"PAYOUT_STATUS_TEXT", payout_status};
+  values[count++] = (template_value_t){"PAYOUT_PERCENT", payout_percent};
   values[count++] = (template_value_t){"FREE_HEAP", free_heap};
   values[count++] = (template_value_t){"MIN_FREE_HEAP", min_free_heap};
   values[count++] = (template_value_t){"LARGEST_FREE_BLOCK", largest_free_block};

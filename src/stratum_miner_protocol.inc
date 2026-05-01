@@ -10,6 +10,8 @@ static void stratum_set_disconnected(void) {
   g_stratum_runtime.connected = false;
   g_stratum_runtime.connected_at_us = 0;
   g_stratum_runtime.disconnected_at_us = now;
+  g_stratum_runtime.payout_status = STRATUM_PAYOUT_STATUS_UNCHECKED;
+  g_stratum_runtime.payout_percent_x100 = 0;
   miner_reset_hashrate_sample(g_stratum_runtime.hashes_per_second != g_stratum.benchmark_hashes_per_second);
   miner_clear_work();
 }

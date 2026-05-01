@@ -187,6 +187,54 @@ static void format_share_error_pct_text(uint32_t rejected, uint32_t submitted, c
   snprintf(out, out_size, "%.1f%%", ((double)rejected * 100.0) / (double)submitted);
 }
 
+static const char* payout_status_id(void) {
+  switch (g_stratum_runtime.payout_status) {
+    case STRATUM_PAYOUT_STATUS_OK:
+      return "ok";
+    case STRATUM_PAYOUT_STATUS_LOW:
+      return "low";
+    case STRATUM_PAYOUT_STATUS_MISSING:
+      return "missing";
+    case STRATUM_PAYOUT_STATUS_UNSUPPORTED_WALLET:
+      return "unsupported";
+    case STRATUM_PAYOUT_STATUS_PARSE_ERROR:
+      return "parse_error";
+    case STRATUM_PAYOUT_STATUS_UNCHECKED:
+    default:
+      return "unchecked";
+  }
+}
+
+static const char* payout_status_text(void) {
+  switch (g_stratum_runtime.payout_status) {
+    case STRATUM_PAYOUT_STATUS_OK:
+      return "Coinbase payout matches wallet.";
+    case STRATUM_PAYOUT_STATUS_LOW:
+      return "Warning: wallet receives less than 97% of coinbase outputs.";
+    case STRATUM_PAYOUT_STATUS_MISSING:
+      return "Warning: wallet was not found in the coinbase outputs.";
+    case STRATUM_PAYOUT_STATUS_UNSUPPORTED_WALLET:
+      return "Coinbase payout check unavailable for this wallet address.";
+    case STRATUM_PAYOUT_STATUS_PARSE_ERROR:
+      return "Coinbase payout check could not parse the coinbase transaction.";
+    case STRATUM_PAYOUT_STATUS_UNCHECKED:
+    default:
+      return "Coinbase payout has not been checked yet.";
+  }
+}
+
+static void format_payout_percent_text(char* out, size_t out_size) {
+  if ((g_stratum_runtime.payout_percent_x100 % 100U) == 0) {
+    snprintf(out, out_size, "%u%%", (unsigned)(g_stratum_runtime.payout_percent_x100 / 100U));
+    return;
+  }
+  snprintf(out,
+           out_size,
+           "%u.%02u%%",
+           (unsigned)(g_stratum_runtime.payout_percent_x100 / 100U),
+           (unsigned)(g_stratum_runtime.payout_percent_x100 % 100U));
+}
+
 static void format_average_period_text(uint64_t elapsed_us, char* out, size_t out_size) {
   uint64_t minutes = (elapsed_us + 30000000ULL) / 60000000ULL;
   if (minutes == 0) {
