@@ -26,6 +26,31 @@
     .payout-warning.caution{border-color:#f59e0b;background:#fffbeb;color:#78350f;}
     .payout-warning.critical{border-color:#dc2626;background:#fef2f2;color:#7f1d1d;}
     .payout-warning .value-small{color:inherit;}
+    .payout-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+    .payout-header .label{margin:0;}
+    .payout-info{position:relative;}
+    .payout-info summary{
+      display:grid;
+      place-items:center;
+      width:22px;
+      height:22px;
+      border:1px solid currentColor;
+      border-radius:50%;
+      cursor:pointer;
+      font-size:13px;
+      font-weight:700;
+      line-height:1;
+      list-style:none;
+    }
+    .payout-info summary::-webkit-details-marker{display:none;}
+    .payout-info summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+    .payout-info-text{
+      margin:8px 0 0;
+      font-size:12px;
+      line-height:1.35;
+      font-weight:600;
+      color:inherit;
+    }
     :root[data-theme="dark"] .payout-warning.ok{background:#052e16;border-color:#15803d;color:#bbf7d0;}
     :root[data-theme="dark"] .payout-warning.caution{background:#451a03;border-color:#b45309;color:#fde68a;}
     :root[data-theme="dark"] .payout-warning.critical{background:#450a0a;border-color:#b91c1c;color:#fecaca;}
@@ -79,7 +104,13 @@
         <div class="value" data-stat="pool_endpoint">{{POOL_ENDPOINT}}</div>
       </div>
       <div class="stat stat-wide payout-warning" data-payout-warning data-payout-status="{{PAYOUT_STATUS_ID}}">
-        <span class="label">Coinbase payout</span>
+        <div class="payout-header">
+          <span class="label">Coinbase payout</span>
+          <details class="payout-info">
+            <summary title="Coinbase payout details" aria-label="Coinbase payout details">i</summary>
+            <p class="payout-info-text">This checks the block reward payout list, called the coinbase transaction. If your wallet is not listed there, you must trust the pool to pay you later from its wallet. A dishonest pool could keep a winning block reward. Pool operators should split payouts directly in the block reward so miners can verify their share before mining.</p>
+          </details>
+        </div>
         <div class="value value-small" data-stat="payout_warning">{{PAYOUT_STATUS_TEXT}}</div>
         <div class="value value-small" data-stat="payout_percent">{{PAYOUT_PERCENT}} to configured wallet</div>
       </div>
