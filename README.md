@@ -6,6 +6,13 @@
 [![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.5.3-red)](https://github.com/espressif/esp-idf/releases/tag/v5.5.3)
 [![Target: ESP32](https://img.shields.io/badge/target-ESP32-blue)](https://www.espressif.com/en/products/socs/esp32)
 
+## Currently Supported Hardware
+
+- Chip: ESP32-WROOM-32, classic ESP32 target.
+- Default display: SSD1306 128x64 I2C OLED, address 0x3c ([Amazon](https://www.amazon.com/dp/B0BFDHWZB8)).
+- LCD build display: ideaspark ESP32 1.9 inch LCD with ST7789 controller, 320x170 ([Amazon](https://www.amazon.com/dp/B0D6QXC813)).
+- These displays are often available for less from other sites.
+
 - Average mining speed: 620 kH/s, April 2026.
 - 740 KiB binary
 - 108 KiB IRAM, 62 KiB DRAM
