@@ -95,6 +95,7 @@ static uint16_t g_lcd_line[LCD_WIDTH];
 static uint16_t g_lcd_dirty_buffer[LCD_DIRTY_BUFFER_PIXELS];
 static uint16_t g_lcd_text_bg_cache_pixels[LCD_TEXT_BG_CACHE_PIXELS];
 static uint8_t g_lcd_text_overlay[LCD_WIDTH * LCD_TEXT_PAGES];
+static uint8_t g_lcd_text_outline[LCD_WIDTH * LCD_TEXT_PAGES];
 static SemaphoreHandle_t g_lcd_transfer_done = NULL;
 typedef struct {
   int x0;
@@ -125,6 +126,7 @@ static bool g_lcd_full_refresh_needed = true;
 static uint8_t g_lcd_last_flushed_page = 0xff;
 static uint8_t g_lcd_last_flushed_light_mode = 0xff;
 static uint8_t g_lcd_last_flushed_flip_vertical = 0xff;
+static uint8_t g_lcd_last_flushed_text_outline = 0xff;
 static bool g_lcd_graph_force_full = true;
 static uint32_t g_lcd_graph_last_hashrate = UINT32_MAX;
 static uint32_t g_lcd_graph_last_best_share = UINT32_MAX;

@@ -22,6 +22,7 @@ void oled_update_status(void) {
   memset(g_oled_frame, 0, sizeof(g_oled_frame));
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
   memset(g_lcd_text_overlay, 0, sizeof(g_lcd_text_overlay));
+  memset(g_lcd_text_outline, 0, sizeof(g_lcd_text_outline));
 #endif
 
   if (!g_sta_connected && wifi_setup_ap_active()) {

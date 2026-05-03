@@ -155,6 +155,7 @@ static void load_settings(void) {
   memset(&g_display, 0, sizeof(g_display));
   memset(&g_system, 0, sizeof(g_system));
   g_display.screensaver = 1;
+  g_display.text_outline = 1;
   g_system.block_alerts = 1;
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
   g_display.brightness_pct = 50;
@@ -207,12 +208,14 @@ static void load_settings(void) {
     nvs_get_u8(nvs, "screensaver", &g_display.screensaver);
     nvs_get_u8(nvs, "light", &g_display.light_mode);
     nvs_get_u8(nvs, "brightness", &g_display.brightness_pct);
+    nvs_get_u8(nvs, "text_outline", &g_display.text_outline);
     nvs_get_u16(nvs, "sleep_min", &g_display.sleep_timeout_minutes);
     nvs_close(nvs);
   }
   if (g_display.brightness_pct > 100) {
     g_display.brightness_pct = 100;
   }
+  g_display.text_outline = g_display.text_outline != 0 ? 1 : 0;
 
   if (nvs_open("system", NVS_READONLY, &nvs) == ESP_OK) {
     nvs_get_u8(nvs, "perf", &g_system.performance_mode);

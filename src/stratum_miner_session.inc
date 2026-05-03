@@ -172,6 +172,69 @@ static uint32_t stratum_session_wait_ms(void) {
   return g_mining_job.ready ? STRATUM_SESSION_POLL_MS : STRATUM_SESSION_IDLE_POLL_MS;
 }
 
+typedef struct {
+  char host[sizeof(g_stratum.primary_host)];
+  uint16_t port;
+} stratum_primary_probe_args_t;
+
+static stratum_primary_probe_args_t g_stratum_primary_probe_args;
+
+static void stratum_primary_probe_task(void* arg) {
+  stratum_primary_probe_args_t probe;
+  memcpy(&probe, arg, sizeof(probe));
+  const int sock = stratum_connect_socket(probe.host, probe.port);
+  if (sock >= 0) {
+    close(sock);
+    if (g_sta_connected &&
+        g_stratum_runtime.using_backup &&
+        strcmp(g_stratum.primary_host, probe.host) == 0 &&
+        g_stratum.primary_port == probe.port) {
+      g_stratum_switch_to_primary_requested = true;
+      g_stratum_reconnect_requested = true;
+      TaskHandle_t session_task = g_stratum_session_task_handle;
+      if (session_task != NULL) {
+        xTaskNotifyGive(session_task);
+      }
+      ESP_LOGI(TAG, "Primary pool is reachable again; switching from backup");
+    }
+  }
+  g_stratum_primary_probe_in_progress = false;
+  vTaskDelete(NULL);
+}
+
+static void stratum_maybe_probe_primary_pool(void) {
+  if (!g_sta_connected ||
+      !g_stratum_runtime.connected ||
+      !g_stratum_runtime.using_backup ||
+      g_stratum.primary_host[0] == '\0' ||
+      g_stratum.primary_port == 0 ||
+      g_stratum_primary_probe_in_progress) {
+    return;
+  }
+  const int64_t now = esp_timer_get_time();
+  if (g_stratum_last_primary_probe_us != 0 &&
+      now - g_stratum_last_primary_probe_us <
+          (int64_t)STRATUM_PRIMARY_PROBE_INTERVAL_MS * 1000LL) {
+    return;
+  }
+  g_stratum_last_primary_probe_us = now;
+  copy_str(g_stratum_primary_probe_args.host,
+           sizeof(g_stratum_primary_probe_args.host),
+           g_stratum.primary_host);
+  g_stratum_primary_probe_args.port = g_stratum.primary_port;
+  g_stratum_primary_probe_in_progress = true;
+  const BaseType_t created = xTaskCreate(stratum_primary_probe_task,
+                                         "stratum_probe",
+                                         3072,
+                                         &g_stratum_primary_probe_args,
+                                         STRATUM_SOFTWARE_MINER_TASK_PRIORITY,
+                                         NULL);
+  if (created != pdPASS) {
+    g_stratum_primary_probe_in_progress = false;
+    ESP_LOGW(TAG, "Could not create primary pool probe task");
+  }
+}
+
 static bool stratum_session(int sock) {
   uint32_t request_id = 1;
   uint32_t submit_id = 1000;
@@ -209,6 +272,7 @@ static bool stratum_session(int sock) {
     }
     stratum_drain_share_queue(sock, &submit_id, login);
     stratum_update_hashrate();
+    stratum_maybe_probe_primary_pool();
     if (g_stratum_reconnect_requested) {
       g_stratum_session_task_handle = NULL;
       return true;
@@ -266,7 +330,10 @@ void stratum_task(void* arg) {
       rotate_endpoint = true;
     }
     stratum_set_disconnected();
-    if (rotate_endpoint && g_stratum.backup_host[0] != '\0' && g_stratum.backup_port > 0) {
+    if (g_stratum_switch_to_primary_requested) {
+      g_stratum_runtime.using_backup = false;
+      g_stratum_switch_to_primary_requested = false;
+    } else if (rotate_endpoint && g_stratum.backup_host[0] != '\0' && g_stratum.backup_port > 0) {
       g_stratum_runtime.using_backup = !g_stratum_runtime.using_backup;
     }
     vTaskDelay(pdMS_TO_TICKS(STRATUM_RECONNECT_MS));

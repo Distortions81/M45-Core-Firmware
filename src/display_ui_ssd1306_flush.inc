@@ -1,6 +1,9 @@
 /* Private implementation fragment included by display_ui.c. */
 #if !APP_DISPLAY_IDEASPARK_ESP32_19_LCD
 static void oled_flush_dirty_frame(void) {
+  if (g_oled_panel == NULL || g_display_sleeping) {
+    return;
+  }
   if (g_oled_full_refresh_needed) {
     if (!oled_check(esp_lcd_panel_draw_bitmap(g_oled_panel,
                                               0,

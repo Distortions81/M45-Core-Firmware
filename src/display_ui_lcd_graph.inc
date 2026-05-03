@@ -278,6 +278,9 @@ static void lcd_debug_outline_rect(lcd_rect_t rect, lcd_rect_t slice, bool text)
 #endif
 
 static bool lcd_flush_fancy_rect(lcd_rect_t rect) {
+  if (g_oled_panel == NULL || g_display_sleeping) {
+    return true;
+  }
   rect = lcd_rect_clipped(rect.x0, rect.y0, rect.x1, rect.y1);
   if (!lcd_rect_valid(rect)) {
     return true;
@@ -334,7 +337,8 @@ static void lcd_flush_fancy_runtime_page(void) {
   const uint8_t current_level = lcd_graph_quantize_level(hashrate);
   const bool mode_changed = g_lcd_last_flushed_page != g_display_page ||
                             g_lcd_last_flushed_light_mode != g_display.light_mode ||
-                            g_lcd_last_flushed_flip_vertical != g_display.flip_vertical;
+                            g_lcd_last_flushed_flip_vertical != g_display.flip_vertical ||
+                            g_lcd_last_flushed_text_outline != g_display.text_outline;
   const bool full = g_lcd_graph_force_full || mode_changed;
   const bool header_dirty = full ||
                             strcmp(g_lcd_graph_last_ip, ip) != 0 ||
@@ -378,6 +382,7 @@ static void lcd_flush_fancy_runtime_page(void) {
   g_lcd_last_flushed_page = g_display_page;
   g_lcd_last_flushed_light_mode = g_display.light_mode;
   g_lcd_last_flushed_flip_vertical = g_display.flip_vertical;
+  g_lcd_last_flushed_text_outline = g_display.text_outline;
   g_lcd_graph_force_full = false;
   g_lcd_graph_last_hashrate = hashrate;
   g_lcd_graph_last_best_share = best_share;

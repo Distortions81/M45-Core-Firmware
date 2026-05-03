@@ -79,6 +79,10 @@
           <input id="display-light-mode" name="display_light_mode" type="checkbox" {{DISPLAY_LIGHT_MODE_CHECKED}}>
           <span>Light Color Theme</span>
         </label>
+        <label class="toggle-row" for="display-text-outline">
+          <input id="display-text-outline" name="display_text_outline" type="checkbox" {{DISPLAY_TEXT_OUTLINE_CHECKED}}>
+          <span>LCD text outline</span>
+        </label>
       </div>
       <div class="range-row">
         <label for="display-brightness">Display brightness</label>
@@ -157,6 +161,7 @@
         const flipVertical=document.getElementById('flip-vertical').checked;
         const runtimeScreensaver=document.getElementById('runtime-screensaver').checked;
         const displayLightMode=document.getElementById('display-light-mode').checked;
+        const displayTextOutline=document.getElementById('display-text-outline').checked;
         const displayBrightnessPct=displayBrightness.value;
         const displaySleepMinutesSetting=String(normalizedDisplaySleepMinutes(displaySleepMinutes.value));
         const performanceMode=performanceModeInput.checked;
@@ -185,6 +190,7 @@
               ...(flipVertical?{flip_vertical:'1'}:{}),
               ...(runtimeScreensaver?{runtime_screensaver:'1'}:{}),
               ...(displayLightMode?{display_light_mode:'1'}:{}),
+              ...(displayTextOutline?{display_text_outline:'1'}:{}),
               display_brightness:displayBrightnessPct,
               display_sleep_minutes:displaySleepMinutesSetting
             }).toString()

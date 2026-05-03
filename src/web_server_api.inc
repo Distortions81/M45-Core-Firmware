@@ -286,6 +286,7 @@ static esp_err_t display_handler(httpd_req_t* req) {
   const display_settings_t previous = g_display;
   g_display.flip_vertical = form_checked(body, "flip_vertical") ? 1 : 0;
   g_display.screensaver = form_checked(body, "runtime_screensaver") ? 1 : 0;
+  g_display.text_outline = form_checked(body, "display_text_outline") ? 1 : 0;
   set_color_theme(form_checked(body, "display_light_mode") ? "light" : "dark", true);
   if (form_value(body, "display_brightness", value, sizeof(value))) {
     g_display.brightness_pct = parse_percent_or_default(value, previous.brightness_pct);
@@ -300,6 +301,7 @@ static esp_err_t display_handler(httpd_req_t* req) {
     nvs_set_u8(nvs, "screensaver", g_display.screensaver);
     nvs_set_u8(nvs, "light", g_display.light_mode);
     nvs_set_u8(nvs, "brightness", g_display.brightness_pct);
+    nvs_set_u8(nvs, "text_outline", g_display.text_outline);
     nvs_set_u16(nvs, "sleep_min", g_display.sleep_timeout_minutes);
     nvs_commit(nvs);
     nvs_close(nvs);
@@ -308,6 +310,7 @@ static esp_err_t display_handler(httpd_req_t* req) {
       previous.screensaver != g_display.screensaver ||
       previous.light_mode != g_display.light_mode ||
       previous.brightness_pct != g_display.brightness_pct ||
+      previous.text_outline != g_display.text_outline ||
       previous.sleep_timeout_minutes != g_display.sleep_timeout_minutes) {
     request_display_refresh();
   }

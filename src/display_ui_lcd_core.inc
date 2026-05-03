@@ -233,9 +233,34 @@ static void lcd_text_set_pixel(int x, int y) {
   g_lcd_text_overlay[x + (y / 8) * LCD_WIDTH] |= (uint8_t)(1U << (y & 7));
 }
 
+static void lcd_text_set_outline_pixel(int x, int y) {
+  if (x < 0 || x >= LCD_WIDTH || y < 0 || y >= LCD_HEIGHT) {
+    return;
+  }
+  const size_t offset = (size_t)x + (size_t)(y / 8) * LCD_WIDTH;
+  const uint8_t bit = (uint8_t)(1U << (y & 7));
+  if ((g_lcd_text_overlay[offset] & bit) == 0) {
+    g_lcd_text_outline[offset] |= bit;
+  }
+}
+
+static void lcd_text_set_outline_around_pixel(int x, int y) {
+  if (g_display.text_outline == 0) {
+    return;
+  }
+  for (int dy = -1; dy <= 1; ++dy) {
+    for (int dx = -1; dx <= 1; ++dx) {
+      if (dx != 0 || dy != 0) {
+        lcd_text_set_outline_pixel(x + dx, y + dy);
+      }
+    }
+  }
+}
+
 static void lcd_draw_text_clipped_mode(int x, int y, const char* text, int max_width, bool claim_slot) {
   const int start_x = LCD_FRAME_X + x * LCD_FRAME_SCALE;
   const int start_y = LCD_FRAME_Y + y * LCD_FRAME_SCALE;
+  const bool outline = g_display.text_outline != 0;
   const int scaled_end_x = start_x + max_width * LCD_FRAME_SCALE;
   const int end_x = x >= QR_TILE_SIZE ? LCD_WIDTH : (scaled_end_x < LCD_WIDTH ? scaled_end_x : LCD_WIDTH);
   int cursor_x = start_x;
@@ -256,7 +281,10 @@ static void lcd_draw_text_clipped_mode(int x, int y, const char* text, int max_w
         const uint16_t bits = rows[row];
         for (int col = 0; col < width; ++col) {
           if ((bits & (1U << (LCD_FONT_WIDTH - 1 - col))) != 0) {
-            lcd_text_set_pixel(cursor_x + col, start_y + row);
+            const int px = cursor_x + col;
+            const int py = start_y + row;
+            lcd_text_set_outline_around_pixel(px, py);
+            lcd_text_set_pixel(px, py);
           }
         }
       }
@@ -268,10 +296,20 @@ static void lcd_draw_text_clipped_mode(int x, int y, const char* text, int max_w
       cursor_x += LCD_FONT_WIDTH / 2;
     }
   }
+  const int text_y0 = outline ? start_y - 1 : start_y;
+  const int text_y1 = outline ? start_y + LCD_FONT_HEIGHT + 1 : start_y + LCD_FONT_HEIGHT;
   if (claim_slot && claim_x1 > claim_x0) {
-    lcd_mark_text_rect(claim_x0, start_y, claim_x1, start_y + LCD_FONT_HEIGHT, true);
+    lcd_mark_text_rect(claim_x0 - (outline ? 1 : 0),
+                       text_y0,
+                       claim_x1 + (outline ? 1 : 0),
+                       text_y1,
+                       true);
   } else if (!claim_slot && glyph_x1 > claim_x0) {
-    lcd_mark_text_rect(claim_x0, start_y, glyph_x1, start_y + LCD_FONT_HEIGHT, false);
+    lcd_mark_text_rect(claim_x0 - (outline ? 1 : 0),
+                       text_y0,
+                       glyph_x1 + (outline ? 1 : 0),
+                       text_y1,
+                       false);
   }
 }
 
@@ -315,8 +353,48 @@ static void lcd_draw_hline_segment(int y, int x0, int x1, uint16_t color) {
   }
 }
 
+static bool lcd_glyph_row_bit(int glyph, int row, int col) {
+  if (row < 0 || row >= LCD_FONT_HEIGHT || col < 0 || col >= g_lcd_font_widths[glyph]) {
+    return false;
+  }
+  return (g_lcd_font_rows[glyph][row] & (1U << (LCD_FONT_WIDTH - 1 - col))) != 0;
+}
+
+static void lcd_draw_glyph_outline_line(int line_y, int x, int y, int glyph, int max_width) {
+  if (g_display.text_outline == 0 || line_y < y - 1 || line_y > y + LCD_FONT_HEIGHT ||
+      max_width <= 0) {
+    return;
+  }
+  const int width = g_lcd_font_widths[glyph];
+  const int row = line_y - y;
+  const int end_x = x + max_width;
+  for (int col = -1; col <= width; ++col) {
+    const int px = x + col;
+    if (px < 0 || px >= end_x || px >= LCD_WIDTH) {
+      continue;
+    }
+    bool outline = false;
+    for (int source_row = row - 1; source_row <= row + 1 && !outline; ++source_row) {
+      for (int source_col = col - 1; source_col <= col + 1; ++source_col) {
+        if (lcd_glyph_row_bit(glyph, source_row, source_col) &&
+            !lcd_glyph_row_bit(glyph, row, col)) {
+          outline = true;
+          break;
+        }
+      }
+    }
+    if (outline) {
+      lcd_blend_pixel(px, g_display.light_mode != 0 ? LCD_RGB565_WHITE : LCD_RGB565_BLACK);
+    }
+  }
+}
+
 static void lcd_draw_text_line(int line_y, int x, int y, const char* text, uint16_t color, int max_width) {
-  if (line_y < y || line_y >= y + LCD_FONT_HEIGHT || max_width <= 0) {
+  const bool outline = g_display.text_outline != 0 &&
+                       color != (g_display.light_mode != 0 ? LCD_RGB565_WHITE : LCD_RGB565_BLACK);
+  if (line_y < y - (outline ? 1 : 0) ||
+      line_y >= y + LCD_FONT_HEIGHT + (outline ? 1 : 0) ||
+      max_width <= 0) {
     return;
   }
   const int row = line_y - y;
@@ -326,14 +404,19 @@ static void lcd_draw_text_line(int line_y, int x, int y, const char* text, uint1
     const unsigned char ch = (unsigned char)*text++;
     if (ch >= LCD_FONT_FIRST_CHAR && ch < LCD_FONT_FIRST_CHAR + LCD_FONT_CHAR_COUNT) {
       const int glyph = ch - LCD_FONT_FIRST_CHAR;
-      const uint16_t bits = g_lcd_font_rows[glyph][row];
       const int width = g_lcd_font_widths[glyph];
       if (cursor_x + width > end_x || cursor_x + width > LCD_WIDTH) {
         break;
       }
-      for (int col = 0; col < width; ++col) {
-        if ((bits & (1U << (LCD_FONT_WIDTH - 1 - col))) != 0) {
-          lcd_blend_pixel(cursor_x + col, color);
+      if (outline) {
+        lcd_draw_glyph_outline_line(line_y, cursor_x, y, glyph, end_x - cursor_x);
+      }
+      if (row >= 0 && row < LCD_FONT_HEIGHT) {
+        const uint16_t bits = g_lcd_font_rows[glyph][row];
+        for (int col = 0; col < width; ++col) {
+          if ((bits & (1U << (LCD_FONT_WIDTH - 1 - col))) != 0) {
+            lcd_blend_pixel(cursor_x + col, color);
+          }
         }
       }
       cursor_x += g_lcd_font_advances[glyph];

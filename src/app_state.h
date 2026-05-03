@@ -76,6 +76,7 @@
 #define STRATUM_RECONNECT_MS 5000
 #define STRATUM_IDLE_TIMEOUT_MS 120000
 #define STRATUM_SOCKET_TIMEOUT_MS 5000
+#define STRATUM_PRIMARY_PROBE_INTERVAL_MS 60000
 #define STRATUM_SOCKET_RX_BUFFER 512
 #define APP_TASK_WDT_TIMEOUT_MS 30000
 #ifndef APP_STRATUM_MINE_BATCH
@@ -178,6 +179,7 @@ typedef struct {
   uint8_t screensaver;
   uint8_t light_mode;
   uint8_t brightness_pct;
+  uint8_t text_outline;
   uint16_t sleep_timeout_minutes;
 } display_settings_t;
 

@@ -93,6 +93,8 @@ static esp_err_t settings_page_handler(httpd_req_t* req) {
       (template_value_t){"DISPLAY_RUNTIME_SCREENSAVER_CHECKED", g_display.screensaver ? "checked" : ""};
   values[count++] = (template_value_t){
       "DISPLAY_LIGHT_MODE_CHECKED", strcmp(normalized_theme(g_theme), "light") == 0 ? "checked" : ""};
+  values[count++] =
+      (template_value_t){"DISPLAY_TEXT_OUTLINE_CHECKED", g_display.text_outline ? "checked" : ""};
   values[count++] = (template_value_t){"DISPLAY_BRIGHTNESS", display_brightness};
   values[count++] = (template_value_t){"DISPLAY_SLEEP_MINUTES", display_sleep_minutes};
   values[count++] = (template_value_t){"DISPLAY_SLEEP_MAX_MINUTES", display_sleep_max_minutes};

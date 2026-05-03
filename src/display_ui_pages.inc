@@ -154,6 +154,9 @@ static void oled_apply_runtime_inversion(void) {
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
   return;
 #else
+  if (g_display_sleeping) {
+    return;
+  }
   if (g_oled_panel != NULL) {
     const bool inverted = (g_display.light_mode != 0) ^ g_runtime_inverted;
     if (!oled_check(esp_lcd_panel_invert_color(g_oled_panel, inverted), "display invert")) {
@@ -164,6 +167,9 @@ static void oled_apply_runtime_inversion(void) {
 }
 
 static void oled_apply_display_orientation(void) {
+  if (g_display_sleeping) {
+    return;
+  }
   if (g_oled_panel != NULL && g_applied_flip_vertical != g_display.flip_vertical) {
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
     const bool mirror_x = g_display.flip_vertical == 0;
@@ -463,7 +469,84 @@ static void lcd_draw_centered_alert_text_line(int line_y,
   lcd_draw_text_line(line_y, x, y, text, color, LCD_WIDTH - x);
 }
 
+static int lcd_alert_text_scale(const char* text, int max_scale) {
+  const int width = lcd_text_width(text);
+  const int available = LCD_WIDTH - 16;
+  int scale = max_scale;
+  while (scale > 1 && width * scale > available) {
+    --scale;
+  }
+  return scale;
+}
+
+static void lcd_draw_scaled_alert_text_line(int line_y,
+                                            int y,
+                                            const char* text,
+                                            uint16_t color,
+                                            int scale) {
+  if (scale <= 1) {
+    lcd_draw_centered_alert_text_line(line_y, y, text, color);
+    return;
+  }
+  const int height = LCD_FONT_HEIGHT * scale;
+  const uint16_t outline_color = g_display.light_mode != 0 ? LCD_RGB565_WHITE : LCD_RGB565_BLACK;
+  const bool outline = g_display.text_outline != 0 && color != outline_color;
+  const int outline_pad = outline ? 1 : 0;
+  if (line_y < y - outline_pad || line_y >= y + height + outline_pad) {
+    return;
+  }
+  const int width = lcd_text_width(text) * scale;
+  const int end_x = LCD_WIDTH - 8;
+  int cursor_x = width < LCD_WIDTH ? (LCD_WIDTH - width) / 2 : 0;
+  const int row = line_y >= y ? (line_y - y) / scale : -1;
+  while (*text != '\0' && cursor_x < end_x) {
+    const unsigned char ch = (unsigned char)*text++;
+    if (ch >= LCD_FONT_FIRST_CHAR && ch < LCD_FONT_FIRST_CHAR + LCD_FONT_CHAR_COUNT) {
+      const int glyph = ch - LCD_FONT_FIRST_CHAR;
+      const int glyph_width = g_lcd_font_widths[glyph];
+      if (cursor_x + glyph_width * scale > end_x) {
+        break;
+      }
+      if (outline) {
+        for (int source_row = 0; source_row < LCD_FONT_HEIGHT; ++source_row) {
+          const int py0 = y + source_row * scale;
+          const int py1 = py0 + scale - 1;
+          if (line_y < py0 - 1 || line_y > py1 + 1) {
+            continue;
+          }
+          const uint16_t source_bits = g_lcd_font_rows[glyph][source_row];
+          for (int col = 0; col < glyph_width; ++col) {
+            if ((source_bits & (1U << (LCD_FONT_WIDTH - 1 - col))) == 0) {
+              continue;
+            }
+            const int x0 = cursor_x + col * scale - 1;
+            const int x1 = cursor_x + col * scale + scale;
+            lcd_draw_hline_segment(line_y, x0, x1, outline_color);
+          }
+        }
+      }
+      if (row >= 0 && row < LCD_FONT_HEIGHT) {
+        const uint16_t bits = g_lcd_font_rows[glyph][row];
+        for (int col = 0; col < glyph_width; ++col) {
+          if ((bits & (1U << (LCD_FONT_WIDTH - 1 - col))) == 0) {
+            continue;
+          }
+          for (int dx = 0; dx < scale; ++dx) {
+            lcd_blend_pixel(cursor_x + col * scale + dx, color);
+          }
+        }
+      }
+      cursor_x += g_lcd_font_advances[glyph] * scale;
+    } else {
+      cursor_x += (LCD_FONT_WIDTH / 2) * scale;
+    }
+  }
+}
+
 static void lcd_flush_block_found_page(int64_t now) {
+  if (g_oled_panel == NULL || g_display_sleeping) {
+    return;
+  }
   char hash[24];
   char diff[24];
   block_alert_hash_label(hash, sizeof(hash));
@@ -473,6 +556,7 @@ static void lcd_flush_block_found_page(int64_t now) {
            (unsigned long)g_stratum_runtime.last_found_block_share_difficulty);
   const uint16_t background = lcd_block_alert_background(now);
   const uint16_t foreground = LCD_RGB565_WHITE;
+  const int title_scale = lcd_alert_text_scale("FOUND", lcd_alert_text_scale("BLOCK", 3));
   for (int y0 = 0; y0 < LCD_HEIGHT; y0 += LCD_DIRTY_BUFFER_PIXELS / LCD_WIDTH) {
     const int rows = LCD_DIRTY_BUFFER_PIXELS / LCD_WIDTH;
     const int y1 = y0 + rows < LCD_HEIGHT ? y0 + rows : LCD_HEIGHT;
@@ -480,10 +564,10 @@ static void lcd_flush_block_found_page(int64_t now) {
       for (int x = 0; x < LCD_WIDTH; ++x) {
         g_lcd_line[x] = background;
       }
-      lcd_draw_centered_alert_text_line(y, 28, "BLOCK", foreground);
-      lcd_draw_centered_alert_text_line(y, 58, "FOUND", foreground);
-      lcd_draw_centered_alert_text_line(y, 104, hash, foreground);
-      lcd_draw_centered_alert_text_line(y, 128, diff, foreground);
+      lcd_draw_scaled_alert_text_line(y, 16, "BLOCK", foreground, title_scale);
+      lcd_draw_scaled_alert_text_line(y, 66, "FOUND", foreground, title_scale);
+      lcd_draw_centered_alert_text_line(y, 123, hash, foreground);
+      lcd_draw_centered_alert_text_line(y, 145, diff, foreground);
       memcpy(&g_lcd_dirty_buffer[(size_t)(y - y0) * LCD_WIDTH], g_lcd_line, LCD_WIDTH * sizeof(g_lcd_line[0]));
     }
     if (!oled_check(esp_lcd_panel_draw_bitmap(g_oled_panel, 0, y0, LCD_WIDTH, y1, g_lcd_dirty_buffer),

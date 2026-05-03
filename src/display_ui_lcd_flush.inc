@@ -1,6 +1,9 @@
 /* Private implementation fragment included by display_ui.c. */
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
 static void lcd_clear_terminal_row_if_flipped(void) {
+  if (g_oled_panel == NULL || g_display_sleeping) {
+    return;
+  }
   if (g_display.flip_vertical == 0) {
     return;
   }
@@ -74,7 +77,11 @@ static void lcd_render_scaled_rect_line(lcd_rect_t rect,
 
   const uint8_t text_bit = (uint8_t)(1U << (y & 7));
   const int text_page = y / 8;
+  const uint16_t outline_color = g_display.light_mode != 0 ? LCD_RGB565_WHITE : LCD_RGB565_BLACK;
   for (int x = rect.x0; x < rect.x1; ++x) {
+    if ((g_lcd_text_outline[x + text_page * LCD_WIDTH] & text_bit) != 0) {
+      line[x - rect.x0] = outline_color;
+    }
     if ((g_lcd_text_overlay[x + text_page * LCD_WIDTH] & text_bit) != 0) {
       line[x - rect.x0] = foreground;
     }
@@ -116,6 +123,9 @@ static void lcd_debug_outline_rect(lcd_rect_t rect, lcd_rect_t slice, bool text)
 #endif
 
 static bool lcd_flush_scaled_rect(lcd_dirty_rect_t dirty, uint16_t foreground, const uint16_t* background) {
+  if (g_oled_panel == NULL || g_display_sleeping) {
+    return true;
+  }
   lcd_rect_t rect = dirty.rect;
   rect = lcd_rect_clipped(rect.x0, rect.y0, rect.x1, rect.y1);
   if (!lcd_rect_valid(rect)) {
@@ -166,6 +176,9 @@ static bool lcd_flush_scaled_rect(lcd_dirty_rect_t dirty, uint16_t foreground, c
 }
 
 static void lcd_flush_scaled_oled_frame_full(void) {
+  if (g_oled_panel == NULL || g_display_sleeping) {
+    return;
+  }
   const bool light_theme = g_display.light_mode != 0;
   const uint16_t foreground = light_theme ? LCD_RGB565_BLACK : LCD_RGB565_WHITE;
   const uint16_t* background = light_theme ? g_lcd_background_light : g_lcd_background_dark;
@@ -182,14 +195,19 @@ static void lcd_flush_scaled_oled_frame_full(void) {
   g_lcd_last_flushed_page = g_display_page;
   g_lcd_last_flushed_light_mode = g_display.light_mode;
   g_lcd_last_flushed_flip_vertical = g_display.flip_vertical;
+  g_lcd_last_flushed_text_outline = g_display.text_outline;
   lcd_dirty_remember_current_frame();
 }
 
 static void lcd_flush_scaled_oled_frame(void) {
+  if (g_oled_panel == NULL || g_display_sleeping) {
+    return;
+  }
   lcd_dirty_finish_frame();
   if (g_lcd_last_flushed_page != g_display_page ||
       g_lcd_last_flushed_light_mode != g_display.light_mode ||
-      g_lcd_last_flushed_flip_vertical != g_display.flip_vertical) {
+      g_lcd_last_flushed_flip_vertical != g_display.flip_vertical ||
+      g_lcd_last_flushed_text_outline != g_display.text_outline) {
     g_lcd_full_refresh_needed = true;
     lcd_text_bg_cache_reset();
   }
@@ -235,6 +253,7 @@ static void lcd_flush_scaled_oled_frame(void) {
   g_lcd_last_flushed_page = g_display_page;
   g_lcd_last_flushed_light_mode = g_display.light_mode;
   g_lcd_last_flushed_flip_vertical = g_display.flip_vertical;
+  g_lcd_last_flushed_text_outline = g_display.text_outline;
   lcd_dirty_remember_current_frame();
 }
 #endif
