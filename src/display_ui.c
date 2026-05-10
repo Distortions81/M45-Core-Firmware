@@ -161,9 +161,9 @@ static int64_t g_lcd_graph_last_saved_minute = -1;
 #define APP_OLED_I2C_CLOCK_HZ (400 * 1000)
 #endif
 #endif
-#define QR_MAX_VERSION 6
-#define QR_RUNTIME_VERSION 3
-#define QR_SETUP_VERSION 3
+#define QR_MAX_VERSION 3
+#define QR_RUNTIME_VERSION QR_MAX_VERSION
+#define QR_SETUP_VERSION QR_MAX_VERSION
 #define QR_MAX_MODULES ((4 * QR_MAX_VERSION) + 17)
 #define QR_MAX_BUFFER_SIZE (((QR_MAX_MODULES * QR_MAX_MODULES) + 7) / 8)
 #define QR_SCALE 2

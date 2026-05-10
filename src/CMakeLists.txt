@@ -104,6 +104,8 @@ idf_component_register(
         nvs_flash
 )
 
+set_source_files_properties("third_party/qrcode/qrcode.c" PROPERTIES COMPILE_DEFINITIONS LOCK_VERSION=3)
+
 option(APP_SYNTHETIC_NO_WIFI_NO_OLED "Build no-Wi-Fi/no-OLED synthetic miner benchmark firmware" OFF)
 if(APP_SYNTHETIC_NO_WIFI_NO_OLED)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_SYNTHETIC_NO_WIFI_NO_OLED=1 APP_ENABLE_SERIAL_LOGS=1)

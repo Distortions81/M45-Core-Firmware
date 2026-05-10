@@ -344,13 +344,12 @@ static void drawFormatBits(BitBucket *modules, BitBucket *isFunction, uint8_t ec
 // Draws two copies of the version bits (with its own error correction code),
 // based on this object's version field (which only has an effect for 7 <= version <= 40).
 static void drawVersion(BitBucket *modules, BitBucket *isFunction, uint8_t version) {
-    
-    int8_t size = modules->bitOffsetOrWidth;
-
 #if LOCK_VERSION != 0 && LOCK_VERSION < 7
     return;
     
 #else
+    int8_t size = modules->bitOffsetOrWidth;
+
     if (version < 7) { return; }
     
     // Calculate error correction code and pack bits
@@ -689,7 +688,9 @@ static void performErrorCorrection(uint8_t version, uint8_t ecc, BitBucket *data
 #endif
     
     uint8_t blockEccLen = totalEcc / numBlocks;
+#if LOCK_VERSION == 0 || LOCK_VERSION >= 5
     uint8_t numShortBlocks = numBlocks - moduleCount / 8 % numBlocks;
+#endif
     uint8_t shortBlockLen = moduleCount / 8 / numBlocks;
     
     uint8_t shortDataBlockLen = shortBlockLen - blockEccLen;
