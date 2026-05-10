@@ -54,10 +54,12 @@
   </div>
   {{FOOTER}}
   <script>
-    fetch('/api/ui',{cache:'no-store'}).then((response)=>response.ok?response.text():'').then((text)=>{
+    const controller=new AbortController();
+    const timer=window.setTimeout(()=>controller.abort(),6000);
+    fetch('/api/ui',{cache:'no-store',signal:controller.signal}).then((response)=>response.ok?response.text():'').then((text)=>{
       const theme=(text.split(',')[0]||'dark')==='light'?'light':'dark';
       document.documentElement.setAttribute('data-theme',theme);
-    }).catch(()=>{});
+    }).catch(()=>{}).finally(()=>window.clearTimeout(timer));
   </script>
 </body>
 </html>

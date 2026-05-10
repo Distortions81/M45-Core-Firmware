@@ -105,6 +105,24 @@
       const setupNodes={};
       document.querySelectorAll('[data-setup]').forEach((node)=>{setupNodes[node.dataset.setup]=node;});
       let actionToken='';
+      async function fetchTextResponseWithTimeout(url,options={},timeoutMs=8000){
+        const controller=new AbortController();
+        const timer=window.setTimeout(()=>controller.abort(),timeoutMs);
+        try{
+          const response=await fetch(url,{...options,signal:controller.signal});
+          const text=await response.text();
+          return {response,text};
+        }finally{
+          window.clearTimeout(timer);
+        }
+      }
+      async function fetchTextWithTimeout(url,options={},timeoutMs=8000){
+        const {response,text}=await fetchTextResponseWithTimeout(url,options,timeoutMs);
+        if(!response.ok){
+          throw new Error(text||('HTTP '+response.status));
+        }
+        return text;
+      }
       if(location.pathname==='/wifi'){
         document.body.dataset.showToolbar='1';
       }
@@ -125,11 +143,7 @@
       }
       async function loadSetup(){
         try{
-          const response=await fetch('/api/setup',{cache:'no-store'});
-          const text=await response.text();
-          if(!response.ok){
-            throw new Error(text||('HTTP '+response.status));
-          }
+          const text=await fetchTextWithTimeout('/api/setup',{cache:'no-store'});
           applySetup(new URLSearchParams(text));
         }catch(error){
           saveStatus.textContent='Setup load failed: '+error.message;
@@ -259,7 +273,7 @@
         networkMore.innerHTML='';
         let retrying=false;
         try{
-          const response=await fetch('/api/networks',{cache:'no-store'});
+          const {response,text}=await fetchTextResponseWithTimeout('/api/networks',{cache:'no-store'});
           if(response.status===202){
             if(scanAttempt>=networkScanRetryLimit){
               throw new Error('Scan timed out');
@@ -270,7 +284,7 @@
           }
           if(!response.ok){throw new Error('HTTP '+response.status);}
           const refreshing=response.headers.get('X-Scan-Status')==='refreshing';
-          const networks=parseNetworksText(await response.text());
+          const networks=parseNetworksText(text);
           const visibleCount=Math.min(networks.length,3);
           scanStatus.textContent=(refreshing?'Refreshing networks... showing ':'Showing ')+visibleCount+' of '+networks.length+' networks.';
           renderNetworks(networks);
@@ -297,15 +311,11 @@
         saveButton.disabled=true;
         saveStatus.textContent='Testing Wi-Fi connection...';
         try{
-          const response=await fetch('/api/configure',{
+          const message=await fetchTextWithTimeout('/api/configure',{
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
             body:new URLSearchParams({ssid,password}).toString()
-          });
-          const message=await response.text();
-          if(!response.ok){
-            throw new Error(message||('HTTP '+response.status));
-          }
+          },25000);
           saveStatus.textContent=message||'Saved.';
         }catch(error){
           saveStatus.textContent='Save failed: '+error.message;
@@ -323,15 +333,11 @@
           factoryResetButton.disabled=true;
           saveStatus.textContent='Factory reset in progress...';
           try{
-            const response=await fetch('/api/factory-reset',{
+            await fetchTextWithTimeout('/api/factory-reset',{
               method:'POST',
               headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
               body:new URLSearchParams({action_token:actionToken}).toString()
             });
-            const message=await response.text();
-            if(!response.ok){
-              throw new Error(message||('HTTP '+response.status));
-            }
             saveStatus.textContent='Factory reset complete. Restarting device...';
           }catch(error){
             saveStatus.textContent='Factory reset failed: '+error.message;

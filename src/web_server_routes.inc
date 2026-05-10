@@ -13,7 +13,7 @@ static esp_err_t captive_portal_redirect_handler(httpd_req_t* req) {
   httpd_resp_set_hdr(req, "Pragma", "no-cache");
   httpd_resp_set_type(req, "text/html");
   set_common_response_headers(req);
-  return httpd_resp_sendstr(req, "<html><body>Redirect to the captive portal</body></html>");
+  return send_response_str_and_close(req, "<html><body>Redirect to the captive portal</body></html>");
 }
 
 static esp_err_t redirect_handler(httpd_req_t* req) {
@@ -33,9 +33,10 @@ void start_http_server(void) {
   config.uri_match_fn = httpd_uri_match_wildcard;
   config.task_priority = HTTP_SERVER_TASK_PRIORITY;
   config.core_id = HTTP_SERVER_TASK_CORE_ID;
-  // Do not trim these casually. Mobile browsers and chunked settings pages
-  // need the handler/socket headroom more than we need the small RAM savings.
+  // Keep handler/header headroom for the full UI, but keep client sockets below
+  // lwIP's active TCP limit so Stratum and HTTP do not starve each other.
   config.max_uri_handlers = 40;
+  config.max_resp_headers = HTTP_SERVER_MAX_RESPONSE_HEADERS;
   config.max_open_sockets = HTTP_SERVER_MAX_OPEN_SOCKETS;
   config.backlog_conn = HTTP_SERVER_BACKLOG_CONNECTIONS;
   config.stack_size = HTTP_SERVER_STACK_BYTES;

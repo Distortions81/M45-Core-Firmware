@@ -104,7 +104,7 @@ static esp_err_t stats_handler(httpd_req_t* req) {
            (unsigned)g_stratum_runtime.best_share);
   httpd_resp_set_type(req, "text/csv");
   set_text_response_headers(req);
-  return httpd_resp_sendstr(req, line);
+  return send_response_str_and_close(req, line);
 }
 
 static esp_err_t memory_handler(httpd_req_t* req) {
@@ -141,7 +141,7 @@ static esp_err_t memory_handler(httpd_req_t* req) {
            hash_error_pct);
   httpd_resp_set_type(req, "text/csv");
   set_text_response_headers(req);
-  return httpd_resp_sendstr(req, line);
+  return send_response_str_and_close(req, line);
 }
 
 static esp_err_t ui_handler(httpd_req_t* req) {
@@ -157,7 +157,7 @@ static esp_err_t ui_handler(httpd_req_t* req) {
            APP_BUILD_TIME_UTC);
   httpd_resp_set_type(req, "text/csv");
   set_text_response_headers(req);
-  return httpd_resp_sendstr(req, line);
+  return send_response_str_and_close(req, line);
 }
 
 static esp_err_t settings_data_handler(httpd_req_t* req) {
@@ -209,7 +209,7 @@ static esp_err_t settings_data_handler(httpd_req_t* req) {
   append_response_text(line, sizeof(line), &offset, "\n");
   httpd_resp_set_type(req, "application/x-www-form-urlencoded; charset=utf-8");
   set_text_response_headers(req);
-  return httpd_resp_sendstr(req, line);
+  return send_response_str_and_close(req, line);
 }
 
 static esp_err_t setup_data_handler(httpd_req_t* req) {
@@ -248,13 +248,13 @@ static esp_err_t setup_data_handler(httpd_req_t* req) {
   append_response_text(line, sizeof(line), &offset, "\n");
   httpd_resp_set_type(req, "application/x-www-form-urlencoded; charset=utf-8");
   set_text_response_headers(req);
-  return httpd_resp_sendstr(req, line);
+  return send_response_str_and_close(req, line);
 }
 
 static esp_err_t health_handler(httpd_req_t* req) {
   httpd_resp_set_type(req, "text/plain");
   set_text_response_headers(req);
-  return httpd_resp_sendstr(req, "ok");
+  return send_response_str_and_close(req, "ok");
 }
 
 static void append_network_ssid_field(char* out, size_t out_size, size_t* offset, const uint8_t* ssid, size_t ssid_size) {
@@ -417,7 +417,7 @@ static esp_err_t networks_handler(httpd_req_t* req) {
   if (networks_cache_snapshot(cached, sizeof(cached), now, true)) {
     httpd_resp_set_type(req, "text/plain");
     set_text_response_headers(req);
-    return httpd_resp_sendstr(req, cached);
+    return send_response_str_and_close(req, cached);
   }
 
   if (!start_network_scan_task()) {
@@ -430,14 +430,14 @@ static esp_err_t networks_handler(httpd_req_t* req) {
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_set_hdr(req, "X-Scan-Status", "refreshing");
     set_text_response_headers(req);
-    return httpd_resp_sendstr(req, cached);
+    return send_response_str_and_close(req, cached);
   }
 
   httpd_resp_set_status(req, "202 Accepted");
   httpd_resp_set_type(req, "text/plain");
   httpd_resp_set_hdr(req, "Retry-After", "1");
   set_text_response_headers(req);
-  return httpd_resp_sendstr(req, "scan\n");
+  return send_response_str_and_close(req, "scan\n");
 }
 
 static esp_err_t configure_handler(httpd_req_t* req) {

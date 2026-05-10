@@ -301,5 +301,5 @@ static uint16_t parse_display_sleep_minutes_or_default(const char* text, uint16_
 static void send_plain(httpd_req_t* req, const char* text) {
   httpd_resp_set_type(req, "text/plain");
   set_text_response_headers(req);
-  httpd_resp_sendstr(req, text);
+  send_response_str_and_close(req, text);
 }

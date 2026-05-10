@@ -149,6 +149,20 @@
       const settingNodes={};
       document.querySelectorAll('[data-setting]').forEach((node)=>{settingNodes[node.dataset.setting]=node;});
       let actionToken='';
+      async function fetchTextWithTimeout(url,options={},timeoutMs=8000){
+        const controller=new AbortController();
+        const timer=window.setTimeout(()=>controller.abort(),timeoutMs);
+        try{
+          const response=await fetch(url,{...options,signal:controller.signal});
+          const text=await response.text();
+          if(!response.ok){
+            throw new Error(text||('HTTP '+response.status));
+          }
+          return text;
+        }finally{
+          window.clearTimeout(timer);
+        }
+      }
       displayBrightness.addEventListener('input',()=>{displayBrightnessValue.textContent=displayBrightness.value+'%';});
       function isEnabled(value){
         return value==='1'||value==='true';
@@ -203,11 +217,7 @@
       }
       async function loadSettings(){
         try{
-          const response=await fetch('/api/settings',{cache:'no-store'});
-          const text=await response.text();
-          if(!response.ok){
-            throw new Error(text||('HTTP '+response.status));
-          }
+          const text=await fetchTextWithTimeout('/api/settings',{cache:'no-store'});
           applySettings(new URLSearchParams(text));
         }catch(error){
           saveStatus.textContent='Settings load failed: '+error.message;
@@ -239,7 +249,7 @@
         saveButton.disabled=true;
         saveStatus.textContent='Saving...';
         try{
-          const displayResponse=await fetch('/api/display',{
+          await fetchTextWithTimeout('/api/display',{
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
             body:new URLSearchParams({
@@ -251,11 +261,7 @@
               display_sleep_minutes:displaySleepMinutesSetting
             }).toString()
           });
-          const displayMessage=await displayResponse.text();
-          if(!displayResponse.ok){
-            throw new Error(displayMessage||('HTTP '+displayResponse.status));
-          }
-          const systemResponse=await fetch('/api/system',{
+          await fetchTextWithTimeout('/api/system',{
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
             body:new URLSearchParams({
@@ -263,11 +269,7 @@
               ...(blockAlerts?{block_alerts:'1'}:{})
             }).toString()
           });
-          const systemMessage=await systemResponse.text();
-          if(!systemResponse.ok){
-            throw new Error(systemMessage||('HTTP '+systemResponse.status));
-          }
-          const stratumResponse=await fetch('/api/stratum',{
+          await fetchTextWithTimeout('/api/stratum',{
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
             body:new URLSearchParams({
@@ -279,10 +281,6 @@
               wallet_address:walletAddress
             }).toString()
           });
-          const stratumMessage=await stratumResponse.text();
-          if(!stratumResponse.ok){
-            throw new Error(stratumMessage||('HTTP '+stratumResponse.status));
-          }
           saveStatus.textContent='Saved.';
         }catch(error){
           saveStatus.textContent='Save failed: '+error.message;
@@ -298,15 +296,11 @@
         rebootButton.disabled=true;
         deviceActionStatus.textContent='Rebooting...';
         try{
-          const response=await fetch('/api/reboot',{
+          await fetchTextWithTimeout('/api/reboot',{
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
             body:new URLSearchParams({action_token:actionToken}).toString()
           });
-          const message=await response.text();
-          if(!response.ok){
-            throw new Error(message||('HTTP '+response.status));
-          }
         }catch(error){
           deviceActionStatus.textContent='Reboot failed: '+error.message;
           rebootButton.disabled=false;
@@ -319,15 +313,11 @@
         factoryResetButton.disabled=true;
         deviceActionStatus.textContent='Resetting...';
         try{
-          const response=await fetch('/api/factory-reset',{
+          await fetchTextWithTimeout('/api/factory-reset',{
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
             body:new URLSearchParams({action_token:actionToken}).toString()
           });
-          const message=await response.text();
-          if(!response.ok){
-            throw new Error(message||('HTTP '+response.status));
-          }
           deviceActionStatus.textContent='Reset complete. Rebooting...';
         }catch(error){
           deviceActionStatus.textContent='Factory reset failed: '+error.message;

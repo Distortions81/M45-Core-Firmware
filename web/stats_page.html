@@ -225,6 +225,24 @@
     const maxStoredHashrateSamples=360;
     const hashrateColumnWidth=2;
     let memoryRefreshTimer=0;
+    let uiRefreshInFlight=false;
+    let statsRefreshInFlight=false;
+    let memoryRefreshInFlight=false;
+
+    async function fetchTextWithTimeout(url,options={},timeoutMs=6000){
+      const controller=new AbortController();
+      const timer=window.setTimeout(()=>controller.abort(),timeoutMs);
+      try{
+        const response=await fetch(url,{...options,signal:controller.signal});
+        const text=await response.text();
+        if(!response.ok){
+          throw new Error(text||('HTTP '+response.status));
+        }
+        return text;
+      }finally{
+        window.clearTimeout(timer);
+      }
+    }
 
     function cssColor(name){
       return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -553,36 +571,42 @@
     }
 
     async function refreshUi(){
+      if(uiRefreshInFlight){
+        return;
+      }
+      uiRefreshInFlight=true;
       try{
-        const response=await fetch('/api/ui',{cache:'no-store'});
-        if(!response.ok){
-          throw new Error('HTTP '+response.status);
-        }
-        applyUi(parseUiCsv(await response.text()));
-      }catch(error){}
+        applyUi(parseUiCsv(await fetchTextWithTimeout('/api/ui',{cache:'no-store'})));
+      }catch(error){}finally{
+        uiRefreshInFlight=false;
+      }
     }
 
     async function refreshStats(){
+      if(statsRefreshInFlight){
+        return;
+      }
+      statsRefreshInFlight=true;
       try{
-        const response=await fetch('/api/stats',{cache:'no-store'});
-        if(!response.ok){
-          throw new Error('HTTP '+response.status);
-        }
-        applyStats(parseStatsCsv(await response.text()));
-      }catch(error){}
+        applyStats(parseStatsCsv(await fetchTextWithTimeout('/api/stats',{cache:'no-store'})));
+      }catch(error){}finally{
+        statsRefreshInFlight=false;
+      }
     }
 
     async function refreshMemory(){
       if(!systemStats||!systemStats.open){
         return;
       }
+      if(memoryRefreshInFlight){
+        return;
+      }
+      memoryRefreshInFlight=true;
       try{
-        const response=await fetch('/api/memory',{cache:'no-store'});
-        if(!response.ok){
-          throw new Error('HTTP '+response.status);
-        }
-        applyMemory(parseMemoryCsv(await response.text()));
-      }catch(error){}
+        applyMemory(parseMemoryCsv(await fetchTextWithTimeout('/api/memory',{cache:'no-store'})));
+      }catch(error){}finally{
+        memoryRefreshInFlight=false;
+      }
     }
 
     function syncMemoryRefresh(){
