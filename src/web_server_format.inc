@@ -1,47 +1,5 @@
 /* Private implementation fragment included by web_server.c. */
 
-static void html_escape(const char* input, char* out, size_t out_size) {
-  if (out_size == 0) {
-    return;
-  }
-  if (input == NULL) {
-    input = "";
-  }
-
-  size_t offset = 0;
-  for (const char* cursor = input; *cursor != '\0' && offset + 1 < out_size; ++cursor) {
-    const char* replacement = NULL;
-    switch (*cursor) {
-      case '&':
-        replacement = "&amp;";
-        break;
-      case '<':
-        replacement = "&lt;";
-        break;
-      case '>':
-        replacement = "&gt;";
-        break;
-      case '"':
-        replacement = "&quot;";
-        break;
-      case '\'':
-        replacement = "&#39;";
-        break;
-      default:
-        out[offset++] = *cursor;
-        continue;
-    }
-
-    const size_t replacement_len = strlen(replacement);
-    if (offset + replacement_len >= out_size) {
-      break;
-    }
-    memcpy(out + offset, replacement, replacement_len);
-    offset += replacement_len;
-  }
-  out[offset] = '\0';
-}
-
 static const char* normalized_theme(const char* theme) {
   if (strcmp(theme, "light") == 0) {
     return "light";
@@ -124,16 +82,6 @@ static bool pool_host_text_valid(const char* text, bool allow_empty) {
   return true;
 }
 
-static void format_bytes_text(size_t bytes, char* out, size_t out_size) {
-  if (bytes >= 1024U * 1024U) {
-    snprintf(out, out_size, "%.2f MiB", (double)bytes / (1024.0 * 1024.0));
-  } else if (bytes >= 1024U) {
-    snprintf(out, out_size, "%.2f KiB", (double)bytes / 1024.0);
-  } else {
-    snprintf(out, out_size, "%u B", (unsigned)bytes);
-  }
-}
-
 static void format_hashrate_text(double hashes_per_second, char* out, size_t out_size) {
   if (!isfinite(hashes_per_second) || hashes_per_second <= 0.0) {
     copy_str(out, out_size, "0 H/s");
@@ -144,20 +92,6 @@ static void format_hashrate_text(double hashes_per_second, char* out, size_t out
   } else {
     snprintf(out, out_size, "%.0f H/s", hashes_per_second);
   }
-}
-
-static void format_microdifficulty_text(const char* difficulty, char* out, size_t out_size) {
-  if (difficulty == NULL || difficulty[0] == '\0') {
-    copy_str(out, out_size, "0.0 \xC2\xB5" "diff");
-    return;
-  }
-  char* end = NULL;
-  const double value = strtod(difficulty, &end);
-  if (end == difficulty || !isfinite(value) || value <= 0.0) {
-    copy_str(out, out_size, "0.0 \xC2\xB5" "diff");
-    return;
-  }
-  snprintf(out, out_size, "%.1f \xC2\xB5" "diff", value * 1000000.0);
 }
 
 static uint64_t app_uptime_us_now(int64_t now) {
@@ -179,35 +113,6 @@ static uint64_t pool_tracking_us_now(int64_t now) {
     return 0;
   }
   return (uint64_t)(now - (int64_t)g_stratum_runtime.first_connected_at_us);
-}
-
-static void format_duration_us_text(uint64_t duration_us, char* out, size_t out_size) {
-  const uint64_t total_s = duration_us / 1000000ULL;
-  const unsigned days = (unsigned)(total_s / 86400ULL);
-  const unsigned hours = (unsigned)((total_s / 3600ULL) % 24ULL);
-  const unsigned minutes = (unsigned)((total_s / 60ULL) % 60ULL);
-  const unsigned seconds = (unsigned)(total_s % 60ULL);
-  if (days > 0) {
-    snprintf(out, out_size, "%ud %uh", days, hours);
-  } else if (hours > 0) {
-    snprintf(out, out_size, "%uh %um", hours, minutes);
-  } else if (minutes > 0) {
-    snprintf(out, out_size, "%um %us", minutes, seconds);
-  } else {
-    snprintf(out, out_size, "%us", seconds);
-  }
-}
-
-static void format_pool_uptime_pct_text(uint64_t connected_us, uint64_t uptime_us, char* out, size_t out_size) {
-  if (uptime_us == 0) {
-    copy_str(out, out_size, "0.0%");
-    return;
-  }
-  double percent = ((double)connected_us * 100.0) / (double)uptime_us;
-  if (percent > 100.0) {
-    percent = 100.0;
-  }
-  snprintf(out, out_size, "%.1f%%", percent);
 }
 
 static void format_share_error_pct_text(uint32_t rejected, uint32_t submitted, char* out, size_t out_size) {
@@ -233,24 +138,6 @@ static const char* payout_status_id(void) {
     case STRATUM_PAYOUT_STATUS_UNCHECKED:
     default:
       return "unchecked";
-  }
-}
-
-static const char* payout_status_text(void) {
-  switch (g_stratum_runtime.payout_status) {
-    case STRATUM_PAYOUT_STATUS_OK:
-      return "Coinbase payout matches wallet.";
-    case STRATUM_PAYOUT_STATUS_LOW:
-      return "Warning: wallet receives less than 97% of coinbase outputs.";
-    case STRATUM_PAYOUT_STATUS_MISSING:
-      return "Warning: wallet was not found in the coinbase outputs.";
-    case STRATUM_PAYOUT_STATUS_UNSUPPORTED_WALLET:
-      return "Coinbase payout check unavailable for this wallet address.";
-    case STRATUM_PAYOUT_STATUS_PARSE_ERROR:
-      return "Coinbase payout check could not parse the coinbase transaction.";
-    case STRATUM_PAYOUT_STATUS_UNCHECKED:
-    default:
-      return "Coinbase payout has not been checked yet.";
   }
 }
 

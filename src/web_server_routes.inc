@@ -33,7 +33,7 @@ void start_http_server(void) {
   config.uri_match_fn = httpd_uri_match_wildcard;
   // Do not trim these casually. Mobile browsers and chunked settings pages
   // need the handler/socket headroom more than we need the small RAM savings.
-  config.max_uri_handlers = 32;
+  config.max_uri_handlers = 40;
   config.max_open_sockets = HTTP_SERVER_MAX_OPEN_SOCKETS;
   config.backlog_conn = HTTP_SERVER_BACKLOG_CONNECTIONS;
   config.stack_size = HTTP_SERVER_STACK_BYTES;
@@ -54,6 +54,7 @@ void start_http_server(void) {
   const httpd_uri_t health = {.uri = "/health", .method = HTTP_GET, .handler = health_handler};
   const httpd_uri_t wifi = {.uri = "/wifi", .method = HTTP_GET, .handler = wifi_page_handler};
   const httpd_uri_t settings = {.uri = "/settings", .method = HTTP_GET, .handler = settings_page_handler};
+  const httpd_uri_t styles = {.uri = "/styles.css", .method = HTTP_GET, .handler = styles_css_handler};
   const httpd_uri_t licenses = {
       .uri = "/licenses", .method = HTTP_GET, .handler = licenses_handler};
   const httpd_uri_t mit_license = {
@@ -65,6 +66,11 @@ void start_http_server(void) {
   const httpd_uri_t stats_page = {.uri = "/stats", .method = HTTP_GET, .handler = stats_page_handler};
   const httpd_uri_t stats = {.uri = "/api/stats", .method = HTTP_GET, .handler = stats_handler};
   const httpd_uri_t memory = {.uri = "/api/memory", .method = HTTP_GET, .handler = memory_handler};
+  const httpd_uri_t ui = {.uri = "/api/ui", .method = HTTP_GET, .handler = ui_handler};
+  const httpd_uri_t settings_data = {
+      .uri = "/api/settings", .method = HTTP_GET, .handler = settings_data_handler};
+  const httpd_uri_t setup_data = {
+      .uri = "/api/setup", .method = HTTP_GET, .handler = setup_data_handler};
   const httpd_uri_t networks = {
       .uri = "/api/networks", .method = HTTP_GET, .handler = networks_handler};
   const httpd_uri_t configure = {
@@ -103,6 +109,7 @@ void start_http_server(void) {
   register_uri_or_log(server, &health);
   register_uri_or_log(server, &wifi);
   register_uri_or_log(server, &settings);
+  register_uri_or_log(server, &styles);
   register_uri_or_log(server, &licenses);
   register_uri_or_log(server, &mit_license);
   register_uri_or_log(server, &apache_license);
@@ -110,6 +117,9 @@ void start_http_server(void) {
   register_uri_or_log(server, &stats_page);
   register_uri_or_log(server, &stats);
   register_uri_or_log(server, &memory);
+  register_uri_or_log(server, &ui);
+  register_uri_or_log(server, &settings_data);
+  register_uri_or_log(server, &setup_data);
   register_uri_or_log(server, &networks);
   register_uri_or_log(server, &configure);
   register_uri_or_log(server, &stratum);

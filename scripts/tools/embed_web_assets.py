@@ -9,6 +9,8 @@ from pathlib import Path
 _PRE_TOKEN_RE = re.compile(r"(<(?:pre|textarea)\b[^>]*>.*?</(?:pre|textarea)>)", re.IGNORECASE | re.DOTALL)
 _STYLE_RE = re.compile(r"(<style\b[^>]*>)(.*?)(</style>)", re.IGNORECASE | re.DOTALL)
 _SCRIPT_RE = re.compile(r"(<script\b[^>]*>)(.*?)(</script>)", re.IGNORECASE | re.DOTALL)
+_PARTIAL_HTML_FILES = {"footer.html", "themes.html", "toolbar.html"}
+_STATIC_HTML_PAGES = {"licenses_page.html", "settings_page.html", "setup_page.html", "stats_page.html"}
 
 
 def c_string_literal(text: str) -> str:
@@ -102,6 +104,36 @@ def minify_asset(path: Path, text: str) -> str:
     return text.strip()
 
 
+def expand_placeholders(text: str, values: dict[str, str], depth: int = 0) -> str:
+    if depth >= 4:
+        return text
+
+    def replace(match: re.Match) -> str:
+        key = match.group(1)
+        value = values.get(key)
+        if value is None:
+            return match.group(0)
+        if "{{" in value:
+            return expand_placeholders(value, values, depth + 1)
+        return value
+
+    return re.sub(r"\{\{([A-Z0-9_]+)\}\}", replace, text)
+
+
+def static_html_values(relative: Path, assets: dict[str, str], styles_link: str) -> dict[str, str]:
+    stats_active = "active" if relative.name == "stats_page.html" else ""
+    settings_active = "active" if relative.name in {"settings_page.html", "setup_page.html"} else ""
+    return {
+        "GLOBAL_STYLES": styles_link,
+        "FOOTER": assets.get("footer.html", ""),
+        "TOOLBAR": assets.get("toolbar.html", ""),
+        "THEMES": assets.get("themes.html", ""),
+        "THEME": "dark",
+        "STATS_ACTIVE": stats_active,
+        "SETTINGS_ACTIVE": settings_active,
+    }
+
+
 def main() -> int:
     if len(sys.argv) < 4:
         print("usage: embed_web_assets.py OUT WEB_DIR FILE...", file=sys.stderr)
@@ -110,6 +142,20 @@ def main() -> int:
     out_path = Path(sys.argv[1])
     web_dir = Path(sys.argv[2])
     files = [Path(arg) for arg in sys.argv[3:]]
+    minified_assets = {}
+    relative_paths = {}
+    for file_path in files:
+        try:
+            relative = file_path.relative_to(web_dir)
+        except ValueError:
+            relative = Path(file_path.name)
+        relative_paths[file_path] = relative
+        if relative.suffix.lower() == ".txt":
+            continue
+        minified_assets[relative.name] = minify_asset(relative, file_path.read_text(encoding="utf-8"))
+
+    styles_text = minified_assets.get("styles.css", "")
+    styles_link = '<link rel="stylesheet" href="/styles.css">'
 
     lines = [
         "#pragma once",
@@ -118,10 +164,7 @@ def main() -> int:
         "",
     ]
     for file_path in files:
-        try:
-            relative = file_path.relative_to(web_dir)
-        except ValueError:
-            relative = Path(file_path.name)
+        relative = relative_paths[file_path]
         name = symbol_name(relative)
         # Only standalone static text assets are pre-gzipped here. Display assets
         # such as LCD backgrounds use their own converter into display-native RGB565.
@@ -132,12 +175,25 @@ def main() -> int:
             lines.append(f"static const unsigned int {name}_GZ_LEN = {len(compressed)}U;")
             lines.append("")
             continue
-        text = minify_asset(relative, file_path.read_text(encoding="utf-8"))
+        text = minified_assets[relative.name]
         if relative.name == "styles.css":
-            lines.append("static const char WEB_GLOBAL_STYLES_HTML[] =")
-            lines.append(c_string_literal("<style>" + text + "</style>") + ";")
+            compressed = gzip_bytes(styles_text.encode("utf-8"))
+            lines.append(f"static const unsigned char {name}_GZ[] =")
+            lines.append(c_byte_array(compressed) + ";")
+            lines.append(f"static const unsigned int {name}_GZ_LEN = {len(compressed)}U;")
             lines.append("")
             continue
+        if relative.name in _PARTIAL_HTML_FILES:
+            continue
+        if relative.name in _STATIC_HTML_PAGES:
+            text = expand_placeholders(text, static_html_values(relative, minified_assets, styles_link))
+            if "{{" not in text:
+                compressed = gzip_bytes(text.encode("utf-8"))
+                lines.append(f"static const unsigned char {name}_GZ[] =")
+                lines.append(c_byte_array(compressed) + ";")
+                lines.append(f"static const unsigned int {name}_GZ_LEN = {len(compressed)}U;")
+                lines.append("")
+                continue
         lines.append(f"static const char {name}[] =")
         lines.append(c_string_literal(text) + ";")
         lines.append("")

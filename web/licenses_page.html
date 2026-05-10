@@ -53,5 +53,11 @@
     </ul>
   </div>
   {{FOOTER}}
+  <script>
+    fetch('/api/ui',{cache:'no-store'}).then((response)=>response.ok?response.text():'').then((text)=>{
+      const theme=(text.split(',')[0]||'dark')==='light'?'light':'dark';
+      document.documentElement.setAttribute('data-theme',theme);
+    }).catch(()=>{});
+  </script>
 </body>
 </html>

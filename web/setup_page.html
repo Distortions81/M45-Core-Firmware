@@ -48,15 +48,16 @@
     .signal-fair .signal-bars span:nth-child(-n+3){background:#ca8a04;}
     .signal-weak .signal-bars span:nth-child(-n+2){background:#ea580c;}
     .signal-poor .signal-bars span:nth-child(1){background:#dc2626;}
+    body.setup-page:not([data-show-toolbar="1"]) .toolbar{display:none;}
     ol{padding-left:20px;}
   </style>
 </head>
-<body>
+<body class="setup-page">
   {{TOOLBAR}}
   <div class="card">
-    <h1>{{PAGE_TITLE}}</h1>
-    <p class="meta muted">Network <code>{{SSID}}</code> | Address <code>{{DEVICE_IP}}</code></p>
-    <p>{{PAGE_INTRO}}</p>
+    <h1 data-setup="page_title">Device setup</h1>
+    <p class="meta muted">Network <code data-setup="ssid">loading</code> | Address <code data-setup="device_ip">loading</code></p>
+    <p data-setup="page_intro">Choose a Wi-Fi network to connect this device.</p>
     <div class="box">
       <strong>Wi-Fi networks</strong><br>
       <span id="scan-status" class="muted">Scanning for networks...</span><br>
@@ -66,13 +67,13 @@
     </div>
     <div class="box">
       <label for="station-ssid">Wi-Fi name</label>
-      <input id="station-ssid" name="ssid" autocomplete="ssid" value="{{SAVED_WIFI_SSID}}">
+      <input id="station-ssid" name="ssid" autocomplete="ssid">
       <label for="station-password">Wi-Fi password</label>
       <input id="station-password" name="password" type="password" autocomplete="current-password">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button id="save-button" type="button">{{SAVE_BUTTON_LABEL}}</button>
+        <button id="save-button" type="button" disabled>Save &amp; reboot</button>
       </div>
-      <div id="save-status" class="muted">{{SAVE_HINT}}</div>
+      <div id="save-status" class="muted">Loading setup...</div>
     </div>
     <ol>
       <li>Choose a network or enter the name manually.</li>
@@ -101,7 +102,39 @@
       const wifiErrorDialog=document.getElementById('wifi-error-dialog');
       const wifiErrorMessage=document.getElementById('wifi-error-message');
       const wifiErrorClose=document.getElementById('wifi-error-close');
-      const actionToken='{{ACTION_TOKEN}}';
+      const setupNodes={};
+      document.querySelectorAll('[data-setup]').forEach((node)=>{setupNodes[node.dataset.setup]=node;});
+      let actionToken='';
+      if(location.pathname==='/wifi'){
+        document.body.dataset.showToolbar='1';
+      }
+      function applySetup(data){
+        const theme=data.get('theme')==='light'?'light':'dark';
+        document.documentElement.setAttribute('data-theme',theme);
+        const title=data.get('page_title')||'Device setup';
+        document.title=title;
+        if(setupNodes.page_title){setupNodes.page_title.textContent=title;}
+        if(setupNodes.ssid){setupNodes.ssid.textContent=data.get('ssid')||'';}
+        if(setupNodes.device_ip){setupNodes.device_ip.textContent=data.get('device_ip')||'';}
+        if(setupNodes.page_intro){setupNodes.page_intro.textContent=data.get('page_intro')||'';}
+        ssidInput.value=data.get('saved_wifi_ssid')||'';
+        saveButton.textContent=data.get('save_button_label')||'Save & reboot';
+        saveStatus.textContent=data.get('save_hint')||'';
+        actionToken=data.get('action_token')||'';
+        saveButton.disabled=false;
+      }
+      async function loadSetup(){
+        try{
+          const response=await fetch('/api/setup',{cache:'no-store'});
+          const text=await response.text();
+          if(!response.ok){
+            throw new Error(text||('HTTP '+response.status));
+          }
+          applySetup(new URLSearchParams(text));
+        }catch(error){
+          saveStatus.textContent='Setup load failed: '+error.message;
+        }
+      }
       function showWifiError(message){
         wifiErrorMessage.textContent=message;
         if(wifiErrorDialog.showModal){
@@ -309,6 +342,7 @@
       wifiErrorClose.addEventListener('click',()=>wifiErrorDialog.close());
       scanButton.addEventListener('click',()=>scanNetworks());
       saveButton.addEventListener('click',saveCredentials);
+      loadSetup();
       scanNetworks();
     </script>
   </div>

@@ -105,7 +105,7 @@
 <body>
   {{TOOLBAR}}
   <div class="card">
-    <h1>{{DEVICE_NAME}} Stats</h1>
+    <h1><span data-ui="device_name">M45 Miner</span> Stats</h1>
     <div id="block-alert" class="block-alert" hidden>
       <div>
         <strong>Block found</strong>
@@ -118,22 +118,22 @@
       <div class="stat stat-wide">
         <span class="label">Hashrate</span>
         <div class="sparkline-pill"><canvas id="hashrate-graph" width="480" height="84"></canvas></div>
-        <div class="value" data-stat="hashes_per_sec">{{HASHES_PER_SEC}}</div>
-        <div class="value value-small" data-stat="hashrate_average">{{HASHRATE_AVERAGE}}</div>
+        <div class="value" data-stat="hashes_per_sec">0 H/s</div>
+        <div class="value value-small" data-stat="hashrate_average">Average: gathering</div>
       </div>
       <div class="stat">
         <span class="label">Uptime</span>
-        <div class="value" data-stat="uptime">{{UPTIME}}</div>
+        <div class="value" data-stat="uptime">0m</div>
       </div>
       <div class="stat">
         <span class="label">Connection</span>
-        <div class="value" data-stat="pool_status">{{POOL_STATUS}}</div>
+        <div class="value" data-stat="pool_status">Not connected</div>
       </div>
       <div class="stat stat-wide">
         <span class="label">Pool</span>
-        <div class="value" data-stat="pool_endpoint">{{POOL_ENDPOINT}}</div>
+        <div class="value" data-stat="pool_endpoint">Not configured</div>
       </div>
-      <div class="stat stat-wide payout-warning" data-payout-warning data-payout-status="{{PAYOUT_STATUS_ID}}">
+      <div class="stat stat-wide payout-warning" data-payout-warning data-payout-status="unchecked">
         <div class="payout-header">
           <span class="label">Coinbase payout</span>
           <details class="payout-info">
@@ -141,57 +141,57 @@
             <p class="payout-info-text">This checks the block reward payout list, called the coinbase transaction. If your wallet is not listed there, you must trust the pool to pay you later from its wallet. A dishonest pool could keep a winning block reward. Pool operators should split payouts directly in the block reward so miners can verify their share before mining.</p>
           </details>
         </div>
-        <div class="value value-small" data-stat="payout_warning">{{PAYOUT_STATUS_TEXT}}</div>
-        <div class="value value-small" data-stat="payout_percent" {{PAYOUT_PERCENT_HIDDEN}}>{{PAYOUT_PERCENT}} to configured wallet</div>
+        <div class="value value-small" data-stat="payout_warning">Coinbase payout has not been checked yet.</div>
+        <div class="value value-small" data-stat="payout_percent" hidden></div>
       </div>
       <div class="stat">
         <span class="label">Shares/min</span>
-        <div class="value" data-stat="shares_per_min">{{SHARES_PER_MIN}}</div>
+        <div class="value" data-stat="shares_per_min">0.00</div>
       </div>
       <div class="stat">
         <span class="label">Mining difficulty</span>
-        <div class="value" data-stat="current_difficulty_micro">{{CURRENT_DIFFICULTY_MICRO}}</div>
-        <div class="value value-small" data-stat="current_difficulty_raw">{{CURRENT_DIFFICULTY}}</div>
+        <div class="value" data-stat="current_difficulty_micro">0.0 &micro;diff</div>
+        <div class="value value-small" data-stat="current_difficulty_raw">0.0000000000</div>
       </div>
       <div class="stat">
         <span class="label">Shares</span>
-        <div class="value" data-stat="submitted_shares">{{SUBMITTED_SHARES}}</div>
+        <div class="value" data-stat="submitted_shares">0</div>
       </div>
       <div class="stat">
         <span class="label">Share errors</span>
-        <div class="value" data-stat="share_error_pct">{{SHARE_ERROR_PCT}}</div>
-        <div class="value value-small" data-stat="rejected_shares">{{REJECTED_SHARES}} rejected</div>
+        <div class="value" data-stat="share_error_pct">0.0%</div>
+        <div class="value value-small" data-stat="rejected_shares">0 rejected</div>
       </div>
       <details class="stat-group" id="system-stats">
         <summary><span class="section-title">Device details</span></summary>
         <div class="stat-group-content">
           <div class="stat">
             <span class="label">Device uptime</span>
-            <div class="value" data-memory="hardware_uptime">{{HARDWARE_UPTIME}}</div>
+            <div class="value" data-memory="hardware_uptime">0s</div>
           </div>
           <div class="stat">
             <span class="label">Pool uptime</span>
-            <div class="value" data-memory="pool_uptime">{{POOL_UPTIME}}</div>
+            <div class="value" data-memory="pool_uptime">0s</div>
           </div>
           <div class="stat">
             <span class="label">Pool connected</span>
-            <div class="value" data-memory="pool_uptime_pct">{{POOL_UPTIME_PCT}}</div>
+            <div class="value" data-memory="pool_uptime_pct">0.0%</div>
           </div>
           <div class="stat">
             <span class="label">Hash errors</span>
-            <div class="value" data-memory="hash_error_pct">{{HASH_ERROR_PCT}}</div>
+            <div class="value" data-memory="hash_error_pct">0.0%</div>
           </div>
           <div class="stat stat-wide">
             <span class="label">Memory</span>
-            <div class="value value-small" data-memory="memory_summary">free={{FREE_HEAP}}, low={{MIN_FREE_HEAP}}, block={{LARGEST_FREE_BLOCK}}, int={{INTERNAL_FREE_HEAP}}, int-low={{INTERNAL_MIN_FREE_HEAP}}, int-block={{INTERNAL_LARGEST_FREE_BLOCK}}, dma={{DMA_FREE_HEAP}}</div>
+            <div class="value value-small" data-memory="memory_summary">free=0 B, low=0 B, block=0 B, int=0 B, int-low=0 B, int-block=0 B, dma=0 B</div>
           </div>
           <div class="stat stat-wide">
             <span class="label">Build</span>
-            <div class="value value-small">{{BUILD_ID}}</div>
+            <div class="value value-small" data-ui="build_id">loading</div>
           </div>
           <div class="stat stat-wide">
             <span class="label">Built</span>
-            <div class="value value-small">{{BUILD_TIME}}</div>
+            <div class="value value-small" data-ui="build_time">loading</div>
           </div>
         </div>
       </details>
@@ -203,6 +203,8 @@
     document.querySelectorAll('[data-stat]').forEach((node)=>{statNodes[node.dataset.stat]=node;});
     const memoryNodes={};
     document.querySelectorAll('[data-memory]').forEach((node)=>{memoryNodes[node.dataset.memory]=node;});
+    const uiNodes={};
+    document.querySelectorAll('[data-ui]').forEach((node)=>{uiNodes[node.dataset.ui]=node;});
     const graph=document.getElementById('hashrate-graph');
     const systemStats=document.getElementById('system-stats');
     const graphContext=graph.getContext('2d');
@@ -213,11 +215,11 @@
     const blockAlertHash=document.querySelector('[data-block-alert-hash]');
     const dismissedBlockStorageKey='m45.dismissedBlockAlert';
     const initialBlockData={
-      found_blocks:'{{FOUND_BLOCKS}}',
-      last_found_block_nonce:'{{LAST_FOUND_BLOCK_NONCE}}',
-      last_found_block_difficulty:'{{LAST_FOUND_BLOCK_DIFFICULTY}}',
-      last_found_block_hash:'{{LAST_FOUND_BLOCK_HASH}}',
-      block_alerts_enabled:'{{BLOCK_ALERTS_ENABLED}}'
+      found_blocks:'0',
+      last_found_block_nonce:'0x00000000',
+      last_found_block_difficulty:'0',
+      last_found_block_hash:'',
+      block_alerts_enabled:'1'
     };
     const hashrateHistory=[];
     const maxStoredHashrateSamples=360;
@@ -465,6 +467,25 @@
       };
     }
 
+    function parseUiCsv(text){
+      const fields=text.trim().split(',');
+      return {
+        theme:fields[0]||'dark',
+        device_name:fields[1]||'M45 Miner',
+        build_id:fields[2]||'unknown',
+        build_time:fields[3]||'unknown'
+      };
+    }
+
+    function applyUi(data){
+      const theme=data.theme==='light'?'light':'dark';
+      document.documentElement.setAttribute('data-theme',theme);
+      if(uiNodes.device_name){uiNodes.device_name.textContent=data.device_name||'M45 Miner';}
+      if(uiNodes.build_id){uiNodes.build_id.textContent=data.build_id||'unknown';}
+      if(uiNodes.build_time){uiNodes.build_time.textContent=data.build_time||'unknown';}
+      document.title=(data.device_name||'M45 Miner')+' Stats';
+    }
+
     function parseMemoryCsv(text){
       const fields=text.trim().split(',');
       return {
@@ -519,6 +540,16 @@
       }
     }
 
+    async function refreshUi(){
+      try{
+        const response=await fetch('/api/ui',{cache:'no-store'});
+        if(!response.ok){
+          throw new Error('HTTP '+response.status);
+        }
+        applyUi(parseUiCsv(await response.text()));
+      }catch(error){}
+    }
+
     async function refreshStats(){
       try{
         const response=await fetch('/api/stats',{cache:'no-store'});
@@ -556,7 +587,7 @@
 
     window.addEventListener('resize',drawHashrateGraph);
     if(systemStats){systemStats.addEventListener('toggle',syncMemoryRefresh);}
-    if(payoutWarning){applyPayoutStatus(payoutWarning.dataset.payoutStatus,'{{PAYOUT_PERCENT}}');}
+    if(payoutWarning){applyPayoutStatus(payoutWarning.dataset.payoutStatus,'0.00%');}
     if(blockAlertDismiss){
       blockAlertDismiss.addEventListener('click',()=>{
         setDismissedBlockAlertId(blockAlert.dataset.alertId||'');
@@ -564,6 +595,7 @@
       });
     }
     applyBlockAlert(initialBlockData);
+    refreshUi();
     refreshStats();
     setInterval(refreshStats,15000);
   </script>

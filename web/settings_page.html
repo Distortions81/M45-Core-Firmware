@@ -56,10 +56,10 @@
 <body>
   {{TOOLBAR}}
   <div class="card">
-    <h1>{{DEVICE_NAME}} Settings</h1>
+    <h1><span data-setting="device_name">M45 Miner</span> Settings</h1>
     <div class="status">
-      <div><strong>Wi-Fi:</strong> <code>{{STA_SSID}}</code></div>
-      <div><strong>IP:</strong> <code>{{STA_IP}}</code></div>
+      <div><strong>Wi-Fi:</strong> <code data-setting="sta_ssid">loading</code></div>
+      <div><strong>IP:</strong> <code data-setting="sta_ip">loading</code></div>
     </div>
     <div class="box">
       <div class="box-header">
@@ -68,69 +68,69 @@
       </div>
       <div class="toggle-group">
         <label class="toggle-row" for="flip-vertical">
-          <input id="flip-vertical" name="flip_vertical" type="checkbox" {{DISPLAY_FLIP_VERTICAL_CHECKED}}>
+          <input id="flip-vertical" name="flip_vertical" type="checkbox">
           <span>Flip screen</span>
         </label>
         <label class="toggle-row" for="runtime-screensaver">
-          <input id="runtime-screensaver" name="runtime_screensaver" type="checkbox" {{DISPLAY_RUNTIME_SCREENSAVER_CHECKED}}>
+          <input id="runtime-screensaver" name="runtime_screensaver" type="checkbox">
           <span>Screen saver</span>
         </label>
         <label class="toggle-row" for="display-light-mode">
-          <input id="display-light-mode" name="display_light_mode" type="checkbox" {{DISPLAY_LIGHT_MODE_CHECKED}}>
+          <input id="display-light-mode" name="display_light_mode" type="checkbox">
           <span>Light Color Theme</span>
         </label>
         <label class="toggle-row" for="display-text-outline">
-          <input id="display-text-outline" name="display_text_outline" type="checkbox" {{DISPLAY_TEXT_OUTLINE_CHECKED}}>
+          <input id="display-text-outline" name="display_text_outline" type="checkbox">
           <span>LCD text outline</span>
         </label>
       </div>
       <div class="range-row">
         <label for="display-brightness">Display brightness</label>
-        <output id="display-brightness-value">{{DISPLAY_BRIGHTNESS}}%</output>
-        <input id="display-brightness" name="display_brightness" type="range" min="0" max="100" step="5" value="{{DISPLAY_BRIGHTNESS}}">
+        <output id="display-brightness-value">0%</output>
+        <input id="display-brightness" name="display_brightness" type="range" min="0" max="100" step="5" value="0">
       </div>
       <div class="range-row">
         <label for="display-sleep-minutes">Display sleep</label>
         <output id="display-sleep-minutes-value"></output>
-        <input id="display-sleep-minutes" name="display_sleep_minutes" type="number" min="0" max="{{DISPLAY_SLEEP_MAX_MINUTES}}" step="1" value="{{DISPLAY_SLEEP_MINUTES}}">
+        <input id="display-sleep-minutes" name="display_sleep_minutes" type="number" min="0" max="65535" step="1" value="0">
       </div>
       <div class="section-label">Performance</div>
       <label class="toggle-row" for="performance-mode">
-        <input id="performance-mode" name="performance_mode" type="checkbox" {{PERFORMANCE_MODE_CHECKED}}>
+        <input id="performance-mode" name="performance_mode" type="checkbox">
         <span>Performance Mode</span>
       </label>
       <div class="setting-note">Keeps the processor at full speed. It may use more power and run warmer.</div>
       <div class="section-label">Alerts</div>
       <label class="toggle-row" for="block-alerts">
-        <input id="block-alerts" name="block_alerts" type="checkbox" {{BLOCK_ALERTS_CHECKED}}>
+        <input id="block-alerts" name="block_alerts" type="checkbox">
         <span>Block found alerts</span>
       </label>
       <div class="setting-note">Show a web and display alert when this miner finds a block.</div>
       <div class="section-label">Mining</div>
       <label for="primary-server">Main mining pool</label>
       <div class="row field-stack">
-        <input id="primary-server" name="primary_server" placeholder="tinyminer.m45core.com" value="{{STRATUM_PRIMARY_SERVER}}">
-        <input id="primary-port" name="primary_port" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="3333" value="{{STRATUM_PRIMARY_PORT}}">
+        <input id="primary-server" name="primary_server" placeholder="tinyminer.m45core.com">
+        <input id="primary-port" name="primary_port" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="3333">
       </div>
       <label for="backup-server">Backup pool</label>
       <div class="row field-stack">
-        <input id="backup-server" name="backup_server" placeholder="solobtc.nmminer.com" value="{{STRATUM_BACKUP_SERVER}}">
-        <input id="backup-port" name="backup_port" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="3333" value="{{STRATUM_BACKUP_PORT}}">
+        <input id="backup-server" name="backup_server" placeholder="solobtc.nmminer.com">
+        <input id="backup-port" name="backup_port" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="3333">
       </div>
       <label for="username">Worker name (optional)</label>
-      <input id="username" name="username" placeholder="0M45" value="{{STRATUM_USERNAME}}">
+      <input id="username" name="username" placeholder="0M45">
       <label for="wallet-address">Wallet address</label>
-      <input id="wallet-address" name="wallet_address" placeholder="bc1qexamplewalletaddress..." value="{{STRATUM_WALLET_ADDRESS}}">
+      <input id="wallet-address" name="wallet_address" placeholder="bc1qexamplewalletaddress...">
       <div class="actions">
-        <button id="save-button" type="button">Save</button>
+        <button id="save-button" type="button" disabled>Save</button>
       </div>
-      <div id="save-status" class="muted"></div>
+      <div id="save-status" class="muted">Loading settings...</div>
     </div>
     <div class="box device-box">
       <label>Device</label>
       <div class="device-actions">
-        <button id="reboot-button" type="button">Reboot</button>
-        <button id="factory-reset-button" class="danger" type="button">Factory reset</button>
+        <button id="reboot-button" type="button" disabled>Reboot</button>
+        <button id="factory-reset-button" class="danger" type="button" disabled>Factory reset</button>
       </div>
       <div id="device-action-status" class="muted"></div>
     </div>
@@ -146,8 +146,13 @@
       const displaySleepMinutesValue=document.getElementById('display-sleep-minutes-value');
       const performanceModeInput=document.getElementById('performance-mode');
       const blockAlertsInput=document.getElementById('block-alerts');
-      const actionToken='{{ACTION_TOKEN}}';
+      const settingNodes={};
+      document.querySelectorAll('[data-setting]').forEach((node)=>{settingNodes[node.dataset.setting]=node;});
+      let actionToken='';
       displayBrightness.addEventListener('input',()=>{displayBrightnessValue.textContent=displayBrightness.value+'%';});
+      function isEnabled(value){
+        return value==='1'||value==='true';
+      }
       function normalizedDisplaySleepMinutes(value){
         return Math.max(0,parseInt(value,10)||0);
       }
@@ -157,6 +162,57 @@
       }
       displaySleepMinutesValue.textContent=displaySleepLabel(displaySleepMinutes.value);
       displaySleepMinutes.addEventListener('input',()=>{displaySleepMinutesValue.textContent=displaySleepLabel(displaySleepMinutes.value);});
+      function setInputValue(id,value){
+        const input=document.getElementById(id);
+        if(input){input.value=value||'';}
+      }
+      function setCheckbox(id,value){
+        const input=document.getElementById(id);
+        if(input){input.checked=isEnabled(value);}
+      }
+      function applySettings(data){
+        const theme=data.get('theme')==='light'?'light':'dark';
+        const deviceName=data.get('device_name')||'M45 Miner';
+        document.documentElement.setAttribute('data-theme',theme);
+        document.title=deviceName+' Settings';
+        if(settingNodes.device_name){settingNodes.device_name.textContent=deviceName;}
+        if(settingNodes.sta_ssid){settingNodes.sta_ssid.textContent=data.get('sta_ssid')||'Not configured';}
+        if(settingNodes.sta_ip){settingNodes.sta_ip.textContent=data.get('sta_ip')||'Not connected';}
+        setCheckbox('flip-vertical',data.get('display_flip_vertical'));
+        setCheckbox('runtime-screensaver',data.get('display_runtime_screensaver'));
+        setCheckbox('display-light-mode',data.get('display_light_mode'));
+        setCheckbox('display-text-outline',data.get('display_text_outline'));
+        displayBrightness.value=data.get('display_brightness')||'0';
+        displayBrightnessValue.textContent=displayBrightness.value+'%';
+        displaySleepMinutes.max=data.get('display_sleep_max_minutes')||'65535';
+        displaySleepMinutes.value=data.get('display_sleep_minutes')||'0';
+        displaySleepMinutesValue.textContent=displaySleepLabel(displaySleepMinutes.value);
+        setCheckbox('performance-mode',data.get('performance_mode'));
+        setCheckbox('block-alerts',data.get('block_alerts'));
+        setInputValue('primary-server',data.get('stratum_primary_server'));
+        setInputValue('primary-port',data.get('stratum_primary_port'));
+        setInputValue('backup-server',data.get('stratum_backup_server'));
+        setInputValue('backup-port',data.get('stratum_backup_port'));
+        setInputValue('username',data.get('stratum_username'));
+        setInputValue('wallet-address',data.get('stratum_wallet_address'));
+        actionToken=data.get('action_token')||'';
+        saveStatus.textContent='';
+        saveButton.disabled=false;
+        rebootButton.disabled=!actionToken;
+        factoryResetButton.disabled=!actionToken;
+      }
+      async function loadSettings(){
+        try{
+          const response=await fetch('/api/settings',{cache:'no-store'});
+          const text=await response.text();
+          if(!response.ok){
+            throw new Error(text||('HTTP '+response.status));
+          }
+          applySettings(new URLSearchParams(text));
+        }catch(error){
+          saveStatus.textContent='Settings load failed: '+error.message;
+        }
+      }
       async function saveStratumSettings(){
         const flipVertical=document.getElementById('flip-vertical').checked;
         const runtimeScreensaver=document.getElementById('runtime-screensaver').checked;
@@ -278,6 +334,7 @@
           factoryResetButton.disabled=false;
         }
       });
+      loadSettings();
     </script>
   </div>
   {{FOOTER}}

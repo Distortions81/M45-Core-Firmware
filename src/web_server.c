@@ -24,11 +24,6 @@
 #include "nvs_flash.h"
 #include "web_assets.h"
 
-typedef struct {
-  const char* key;
-  const char* value;
-} template_value_t;
-
 #define NETWORK_SCAN_CACHE_TTL_US (15LL * 1000000LL)
 #define NETWORK_SCAN_MAX_APS 20
 #define NETWORK_SCAN_CACHE_LINE_MAX 64
@@ -37,8 +32,6 @@ typedef struct {
 #define HTTP_SERVER_MAX_OPEN_SOCKETS 8
 #define HTTP_SERVER_BACKLOG_CONNECTIONS 8
 #define HTTP_SERVER_SOCKET_TIMEOUT_SECONDS 2
-#define HTTP_TEMPLATE_CHUNKED_THRESHOLD_BYTES 8192
-#define HTTP_TEMPLATE_CHUNK_BYTES 1024
 #define HASHRATE_AVERAGE_WINDOW_US (15LL * 60LL * 1000000LL)
 #define HASHRATE_AVERAGE_MIN_SPAN_US (60LL * 1000000LL)
 #define HASHRATE_AVERAGE_SAMPLE_US (15LL * 1000000LL)
@@ -46,6 +39,7 @@ typedef struct {
 
 static const char* TAG = "web";
 static char g_networks_cache[NETWORK_SCAN_MAX_APS * NETWORK_SCAN_CACHE_LINE_MAX];
+static size_t g_networks_cache_len = 0;
 static int64_t g_networks_cache_us = 0;
 static bool g_networks_cache_valid = false;
 static portMUX_TYPE g_networks_cache_mux = portMUX_INITIALIZER_UNLOCKED;
