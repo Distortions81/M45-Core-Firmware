@@ -124,10 +124,10 @@ static esp_err_t networks_handler(httpd_req_t* req) {
   esp_wifi_scan_start(&scan_config, true);
   uint16_t count = 0;
   esp_wifi_scan_get_ap_num(&count);
-  if (count > 20) {
-    count = 20;
+  if (count > NETWORK_SCAN_MAX_APS) {
+    count = NETWORK_SCAN_MAX_APS;
   }
-  wifi_ap_record_t records[20];
+  wifi_ap_record_t records[NETWORK_SCAN_MAX_APS];
   memset(records, 0, sizeof(records));
   esp_wifi_scan_get_ap_records(&count, records);
 

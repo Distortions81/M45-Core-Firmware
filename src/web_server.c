@@ -28,6 +28,8 @@ typedef struct {
 } template_value_t;
 
 #define NETWORK_SCAN_CACHE_TTL_US (15LL * 1000000LL)
+#define NETWORK_SCAN_MAX_APS 20
+#define NETWORK_SCAN_CACHE_LINE_MAX 64
 #define HTTP_SERVER_STACK_BYTES 8192
 #define HASHRATE_AVERAGE_WINDOW_US (15LL * 60LL * 1000000LL)
 #define HASHRATE_AVERAGE_MIN_SPAN_US (60LL * 1000000LL)
@@ -35,7 +37,7 @@ typedef struct {
 #define HASHRATE_AVERAGE_MAX_SAMPLES 64
 
 static const char* TAG = "web";
-static char g_networks_cache[20 * 128];
+static char g_networks_cache[NETWORK_SCAN_MAX_APS * NETWORK_SCAN_CACHE_LINE_MAX];
 static int64_t g_networks_cache_us = 0;
 static char g_action_token[33];
 typedef struct {
