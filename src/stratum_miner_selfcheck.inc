@@ -5,6 +5,11 @@ typedef struct {
   uint8_t target[32];
 } target_check_t;
 
+typedef struct {
+  uint8_t hash_be[32];
+  uint32_t difficulty;
+} difficulty_check_t;
+
 static void stratum_check_target_case(const target_check_t* check) {
   uint8_t target[32];
   build_share_target(target, check->difficulty);
@@ -36,6 +41,17 @@ static void stratum_check_target_case(const target_check_t* check) {
   }
 }
 
+static void stratum_check_difficulty_case(const difficulty_check_t* check) {
+  const uint32_t difficulty = difficulty_from_hash_be(check->hash_be);
+  if (difficulty != check->difficulty) {
+    ESP_LOGE(TAG,
+             "share difficulty self-check failed: got %lu expected %lu",
+             (unsigned long)difficulty,
+             (unsigned long)check->difficulty);
+    abort();
+  }
+}
+
 void stratum_self_check(void) {
   static const target_check_t checks[] = {
       {
@@ -62,6 +78,24 @@ void stratum_self_check(void) {
 
   for (size_t i = 0; i < sizeof(checks) / sizeof(checks[0]); ++i) {
     stratum_check_target_case(&checks[i]);
+  }
+
+  static const difficulty_check_t difficulty_checks[] = {
+      {
+          .hash_be = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff},
+          .difficulty = 1,
+      },
+      {
+          .hash_be = {0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0x80},
+          .difficulty = 2,
+      },
+      {
+          .hash_be = {0x00, 0x00, 0x00, 0x00, 0x3f, 0xff, 0xc0},
+          .difficulty = 4,
+      },
+  };
+  for (size_t i = 0; i < sizeof(difficulty_checks) / sizeof(difficulty_checks[0]); ++i) {
+    stratum_check_difficulty_case(&difficulty_checks[i]);
   }
 
   mining_job_t job = {0};
@@ -107,9 +141,7 @@ void stratum_self_check(void) {
     abort();
   }
   uint8_t target_order_hash[32];
-  for (size_t i = 0; i < 8; ++i) {
-    write_u32_be(target_order_hash + i * 4, miner_hash_target_word(software_state, i));
-  }
+  miner_hash_words_to_be(software_state, target_order_hash);
   for (size_t i = 0; i < sizeof(target_order_hash); ++i) {
     if (target_order_hash[i] != reference_hash[sizeof(reference_hash) - 1U - i]) {
       ESP_LOGE(TAG, "share target hash order self-check failed");

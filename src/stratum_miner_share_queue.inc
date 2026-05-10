@@ -89,10 +89,15 @@ miner_scan_until_candidate_asm(
 }
 #endif
 
-static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint32_t nonce) {
+static share_queue_push_result_t share_queue_push_with_hash(
+    const miner_work_t* work,
+    uint32_t nonce,
+    const uint8_t hash_be[32],
+    uint32_t share_difficulty) {
   if (!share_queue_ensure_mutex()) {
     return SHARE_QUEUE_PUSH_FULL;
   }
+  const bool found_block = miner_hash_meets_block_target(work, hash_be);
   xSemaphoreTake(g_share_queue_mutex, portMAX_DELAY);
   if (!miner_work_sequence_is_current(work)) {
     xSemaphoreGive(g_share_queue_mutex);
@@ -123,9 +128,6 @@ static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint
            work->ntime);
   ++g_share_queue.count;
   ++g_stratum_runtime.found_shares;
-  uint8_t hash_be[32];
-  const uint32_t share_difficulty = miner_share_difficulty(work, nonce, hash_be);
-  const bool found_block = miner_hash_meets_block_target(work, hash_be);
   record_share_difficulty(share_difficulty);
   if (share_difficulty > g_stratum_runtime.best_share) {
     g_stratum_runtime.best_share = share_difficulty;
@@ -133,7 +135,7 @@ static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint
   }
   xSemaphoreGive(g_share_queue_mutex);
   if (best_share_updated) {
-    request_best_share_save(g_stratum_runtime.best_share);
+    request_best_share_save(share_difficulty);
   }
   if (found_block) {
     record_found_block(nonce, share_difficulty, hash_be);
@@ -144,7 +146,14 @@ static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint
   return SHARE_QUEUE_PUSH_OK;
 }
 
-static bool miner_confirm_hardware_candidate(const miner_work_t* work, uint32_t nonce);
+static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint32_t nonce) {
+  uint8_t hash_be[32];
+  const uint32_t share_difficulty = miner_share_difficulty(work, nonce, hash_be);
+  return share_queue_push_with_hash(work, nonce, hash_be, share_difficulty);
+}
+
+static bool miner_confirm_hardware_candidate(
+    const miner_work_t* work, uint32_t nonce, uint8_t hash_be[32]);
 
 static miner_candidate_result_t IRAM_ATTR __attribute__((noinline)) miner_push_runtime_candidate(
     const miner_work_t* work,
@@ -195,11 +204,14 @@ static miner_candidate_result_t IRAM_ATTR __attribute__((noinline)) miner_push_r
   if (!meets_target) {
     return MINER_CANDIDATE_NONE;
   }
-  if (!miner_confirm_hardware_candidate(work, nonce)) {
+  uint8_t hash_be[32];
+  if (!miner_confirm_hardware_candidate(work, nonce, hash_be)) {
     return MINER_CANDIDATE_NONE;
   }
 
-  const share_queue_push_result_t push_result = share_queue_push(work, nonce);
+  const uint32_t share_difficulty = difficulty_from_hash_be(hash_be);
+  const share_queue_push_result_t push_result =
+      share_queue_push_with_hash(work, nonce, hash_be, share_difficulty);
   if (UNLIKELY(push_result == SHARE_QUEUE_PUSH_FULL)) {
     return MINER_CANDIDATE_QUEUE_FULL;
   }
@@ -218,11 +230,13 @@ static void miner_record_hardware_hash_check(bool valid) {
   portEXIT_CRITICAL(&g_miner_stats_mux);
 }
 
-static bool miner_confirm_hardware_candidate(const miner_work_t* work, uint32_t nonce) {
+static bool miner_confirm_hardware_candidate(
+    const miner_work_t* work, uint32_t nonce, uint8_t hash_be[32]) {
   uint32_t hash_words[8];
   sha256d_midstate_second_state(work->midstate, work->tail_words, nonce, hash_words);
   const bool valid = miner_hash_words_meet_target(work, hash_words);
   miner_record_hardware_hash_check(valid);
+  miner_hash_words_to_be(hash_words, hash_be);
   return valid;
 }
 

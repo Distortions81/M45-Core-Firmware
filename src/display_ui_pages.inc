@@ -158,10 +158,16 @@ static void oled_apply_runtime_inversion(void) {
     return;
   }
   if (g_oled_panel != NULL) {
-    const bool inverted = (g_display.light_mode != 0) ^ g_runtime_inverted;
+    const uint8_t inverted = ((g_display.light_mode != 0) ^ g_runtime_inverted) ? 1U : 0U;
+    if (g_applied_runtime_inverted == inverted) {
+      return;
+    }
     if (!oled_check(esp_lcd_panel_invert_color(g_oled_panel, inverted), "display invert")) {
       g_oled_panel = NULL;
+      g_applied_runtime_inverted = 0xff;
+      return;
     }
+    g_applied_runtime_inverted = inverted;
   }
 #endif
 }

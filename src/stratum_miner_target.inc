@@ -203,6 +203,12 @@ static inline bool miner_hash_words_meet_target(
   return true;
 }
 
+static inline void miner_hash_words_to_be(const uint32_t hash_words[8], uint8_t hash_be[32]) {
+  for (size_t i = 0; i < 8; ++i) {
+    write_u32_be(hash_be + i * 4, miner_hash_target_word(hash_words, i));
+  }
+}
+
 static int target_compare_be(const uint8_t a[32], const uint8_t b[32]) {
   for (size_t i = 0; i < 32; ++i) {
     if (a[i] != b[i]) {
@@ -228,22 +234,21 @@ static uint16_t target_bit_length(const uint8_t value[32]) {
   return 0;
 }
 
-static bool target_get_bit(const uint8_t value[32], uint16_t bit) {
-  return (value[31U - (bit / 8U)] & (uint8_t)(1U << (bit % 8U))) != 0;
-}
-
-static void target_set_bit(uint8_t value[32], uint16_t bit) {
-  value[31U - (bit / 8U)] |= (uint8_t)(1U << (bit % 8U));
-}
-
 static void target_shift_left(const uint8_t input[32], uint16_t shift, uint8_t output[32]) {
   memset(output, 0, 32);
   if (shift >= 256U) {
     return;
   }
-  for (uint16_t bit = 0; bit < 256U - shift; ++bit) {
-    if (target_get_bit(input, bit)) {
-      target_set_bit(output, (uint16_t)(bit + shift));
+  const uint16_t byte_shift = shift / 8U;
+  const uint8_t bit_shift = (uint8_t)(shift & 7U);
+  for (int src = 31; src >= 0; --src) {
+    const int dst = src - (int)byte_shift;
+    if (dst < 0) {
+      break;
+    }
+    output[dst] |= (uint8_t)(input[src] << bit_shift);
+    if (bit_shift != 0 && dst > 0) {
+      output[dst - 1] |= (uint8_t)(input[src] >> (8U - bit_shift));
     }
   }
 }
@@ -301,9 +306,7 @@ static uint32_t miner_share_difficulty(
     const miner_work_t* work, uint32_t nonce, uint8_t hash_be[32]) {
   uint32_t second_state[8];
   sha256d_midstate_second_state(work->midstate, work->tail_words, nonce, second_state);
-  for (size_t i = 0; i < 8; ++i) {
-    write_u32_be(hash_be + i * 4, miner_hash_target_word(second_state, i));
-  }
+  miner_hash_words_to_be(second_state, hash_be);
   return difficulty_from_hash_be(hash_be);
 }
 

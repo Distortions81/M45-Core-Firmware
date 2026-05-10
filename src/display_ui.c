@@ -187,6 +187,9 @@ static bool g_oled_full_refresh_needed = true;
 #endif
 static bool g_runtime_qr_on_right = false;
 static bool g_runtime_inverted = false;
+#if !APP_DISPLAY_IDEASPARK_ESP32_19_LCD
+static uint8_t g_applied_runtime_inverted = 0xff;
+#endif
 static bool g_runtime_swap_sides_on_next_block = false;
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
 static bool g_lcd_clear_runtime_text_slots = false;

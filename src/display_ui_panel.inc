@@ -111,6 +111,9 @@ void display_wake(void) {
     return;
   }
   g_applied_brightness_pct = 0xff;
+#if !APP_DISPLAY_IDEASPARK_ESP32_19_LCD
+  g_applied_runtime_inverted = 0xff;
+#endif
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
   g_lcd_full_refresh_needed = true;
   g_lcd_graph_force_full = true;
@@ -255,6 +258,9 @@ void start_oled(void) {
   g_oled_panel = panel;
   g_oled_io_handle = io_handle;
   g_runtime_inverted = false;
+#if !APP_DISPLAY_IDEASPARK_ESP32_19_LCD
+  g_applied_runtime_inverted = 0xff;
+#endif
   g_applied_flip_vertical = 0xff;
   g_applied_brightness_pct = 0xff;
   oled_apply_display_brightness();
