@@ -33,6 +33,17 @@ only the NVS settings range:
 The browser path is the recommended upgrade flow because it can keep settings
 while still replacing the bootloader, partition table, and app.
 
+## Hardware Compatibility
+
+Use the `OLED` image only on classic ESP32 OLED boards with the expected
+SSD1306 I2C wiring: SDA `GPIO5`, SCL `GPIO4`, and reset `GPIO16`. Use the
+`LCD` image only on the classic ESP32-WROOM-32 ideaspark 1.9 inch ST7789 LCD
+board.
+
+Do not flash these release images to ESP32-C3, ESP32-S3, ESP32-1732S019 LCD
+boards, or ESP32 OLED boards wired to SDA `GPIO21` and SCL `GPIO22`. Those
+boards need a custom build or separate firmware port.
+
 ## Local Release Flashing
 
 Download the OLED or LCD `.bin` image from the GitHub release:

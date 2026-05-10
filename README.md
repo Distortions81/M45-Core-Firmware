@@ -18,7 +18,11 @@ or read [flashing details](docs/FLASHING.md).
 - Chip: ESP32-WROOM-32 or another classic ESP32 target with hardware SHA.
 - Default display: SSD1306 128x64 I2C OLED at address `0x3c`.
 - OLED pins: SDA `GPIO5`, SCL `GPIO4`, reset `GPIO16`.
+- Unsupported OLED lookalikes: ESP32 OLED boards wired to SDA `GPIO21` and
+  SCL `GPIO22` need a custom build or firmware port.
 - LCD build: ideaspark ESP32 1.9 inch LCD with ST7789 controller, 320x170.
+- Unsupported LCD lookalikes: ESP32-C3, ESP32-S3, and ESP32-1732S019 boards
+  need a separate firmware port and cannot run the current release binaries.
 - Flash: 4 MB ESP32 flash layout with bootloader at `0x1000`, partition table
   at `0x8000`, settings/NVS at `0x9000..0xEFFF`, and app at `0x10000`.
 
@@ -30,16 +34,13 @@ or read [flashing details](docs/FLASHING.md).
 
 ## Buy Links
 
-Prices on Amazon and AliExpress change by region, shipping destination,
-selected variant, coupons, and account state. The AliExpress prices below were
-reported for limit-1 purchases; check each listing directly before ordering.
+Prices change by region, shipping destination, selected variant, coupons, and
+account state. Check each listing directly before ordering.
 
 | Firmware build | Source | Listing | Price | Note |
 | --- | --- | --- | ---: | --- |
-| OLED/default | Amazon | [SSD1306 128x64 I2C OLED](https://www.amazon.com/dp/B0BFDHWZB8) | Check listing | Original README source. |
-| OLED/default | AliExpress | [ideaspark ESP32 with 0.96 inch OLED](https://www.aliexpress.us/item/3256806082927592.html) | US $0.99 | Limit 1; classic ESP32 OLED board listing. |
-| LCD | Amazon | [ideaspark ESP32 1.9 inch LCD](https://www.amazon.com/dp/B0D6QXC813) | Check listing | Original README source. |
-| LCD | AliExpress | [1.9 inch ST7789 LCD board](https://www.aliexpress.us/item/3256811913516238.html) | US $1.46 | Limit 1; listing title currently says ESP32-C3, so verify classic ESP32 compatibility before flashing this firmware. |
+| OLED/default | Amazon | [SSD1306 128x64 I2C OLED](https://www.amazon.com/dp/B0BFDHWZB8) | US $11.99 | Supported OLED board. |
+| LCD | Amazon | [ideaspark ESP32 1.9 inch LCD](https://www.amazon.com/dp/B0D6QXC813) | US $15.99 | Supported ideaspark LCD board. |
 
 ## Firmware Features
 
