@@ -118,16 +118,12 @@
       <div class="stat stat-wide">
         <span class="label">Hashrate</span>
         <div class="sparkline-pill"><canvas id="hashrate-graph" width="480" height="84"></canvas></div>
-        <div class="value" data-stat="hashes_per_sec">0 H/s</div>
+        <div class="value" data-stat="hashes_per_sec" hidden></div>
         <div class="value value-small" data-stat="hashrate_average">Average: gathering</div>
       </div>
       <div class="stat">
         <span class="label">Uptime</span>
         <div class="value" data-stat="uptime">0m</div>
-      </div>
-      <div class="stat">
-        <span class="label">Connection</span>
-        <div class="value" data-stat="pool_status">Not connected</div>
       </div>
       <div class="stat stat-wide">
         <span class="label">Pool</span>
@@ -245,7 +241,7 @@
     function formatHashrate(value){
       const number=Number(value);
       if(!Number.isFinite(number)||number<=0){
-        return '0 H/s';
+        return '';
       }
       if(number>=1000000){
         return (number/1000000).toFixed(3)+' MH/s';
@@ -434,10 +430,13 @@
 
     function applyStats(data){
       if(statNodes.uptime){statNodes.uptime.textContent=data.uptime||'0m';}
-      if(statNodes.pool_status){statNodes.pool_status.textContent=data.pool_status||'Not connected';}
       if(statNodes.pool_endpoint){statNodes.pool_endpoint.textContent=data.pool_endpoint||'Not configured';}
       if(statNodes.shares_per_min){statNodes.shares_per_min.textContent=formatNumber(data.shares_per_min,2);}
-      if(statNodes.hashes_per_sec){statNodes.hashes_per_sec.textContent=formatHashrate(data.hashes_per_sec);}
+      if(statNodes.hashes_per_sec){
+        const hashrateText=formatHashrate(data.hashes_per_sec);
+        statNodes.hashes_per_sec.hidden=!hashrateText;
+        statNodes.hashes_per_sec.textContent=hashrateText;
+      }
       if(statNodes.hashrate_average){statNodes.hashrate_average.textContent=data.hashrate_average||'Average: gathering';}
       if(statNodes.best_share){statNodes.best_share.textContent=formatInteger(data.best_share);}
       if(statNodes.current_difficulty_micro){statNodes.current_difficulty_micro.textContent=formatMicrodifficulty(data.current_difficulty);}

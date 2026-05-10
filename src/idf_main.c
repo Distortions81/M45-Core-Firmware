@@ -662,7 +662,6 @@ void app_main(void) {
            sizeof(g_stratum_runtime.current_difficulty),
            g_stratum.suggested_difficulty[0] != '\0' ? g_stratum.suggested_difficulty : "0.0000000000");
   run_first_boot_hash_benchmark();
-  g_stratum_runtime.hashes_per_second = g_stratum.benchmark_hashes_per_second;
   seed_test_block_found();
   APP_SERIAL_LOGF("app: benchmark/settings ready\n");
   if (strcmp(g_stratum_runtime.current_difficulty, "0.0000000000") == 0 &&

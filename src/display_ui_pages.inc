@@ -9,9 +9,14 @@ static bool oled_draw_setup_qr(int x, int y) {
 }
 
 static void oled_hashrate_text(char* out, size_t out_size) {
+  if (out_size == 0) {
+    return;
+  }
   uint32_t hashes = 0;
   stratum_hashrate_snapshot(&hashes, NULL);
-  if (hashes >= 1000000U) {
+  if (hashes == 0) {
+    out[0] = '\0';
+  } else if (hashes >= 1000000U) {
     const uint32_t milli_mh = (hashes + 500U) / 1000U;
     snprintf(out, out_size, "%lu.%03lu MH/s",
              (unsigned long)(milli_mh / 1000U),
@@ -719,14 +724,19 @@ static void oled_draw_graph_page(void) {
   oled_format_short_uptime(uptime, sizeof(uptime));
   copy_str(ip, sizeof(ip), g_sta_ip[0] != '\0' ? g_sta_ip : "NO IP");
 
-  const int hashrate_w = (int)strlen(hashrate) * FONT_ADVANCE - 1;
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
   oled_draw_text_glyph_bounds(0, 2, uptime, 1, OLED_WIDTH);
-  oled_draw_text_glyph_bounds(OLED_WIDTH - hashrate_w - 1, 2, hashrate, 1, hashrate_w + 1);
+  if (hashrate[0] != '\0') {
+    const int hashrate_w = (int)strlen(hashrate) * FONT_ADVANCE - 1;
+    oled_draw_text_glyph_bounds(OLED_WIDTH - hashrate_w - 1, 2, hashrate, 1, hashrate_w + 1);
+  }
   oled_draw_text_glyph_bounds(0, 56, ip, 1, OLED_WIDTH);
 #else
   oled_draw_text_clipped(0, 2, uptime, 1, OLED_WIDTH);
-  oled_draw_text_clipped(OLED_WIDTH - hashrate_w - 1, 2, hashrate, 1, hashrate_w + 1);
+  if (hashrate[0] != '\0') {
+    const int hashrate_w = (int)strlen(hashrate) * FONT_ADVANCE - 1;
+    oled_draw_text_clipped(OLED_WIDTH - hashrate_w - 1, 2, hashrate, 1, hashrate_w + 1);
+  }
   oled_draw_text_clipped(0, 56, ip, 1, OLED_WIDTH);
 #endif
 

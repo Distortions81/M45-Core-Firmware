@@ -187,8 +187,7 @@ static void hashrate_average_clear_locked(void) {
 }
 
 static bool hashrate_average_live_rate_ready(uint32_t hashes_per_second) {
-  return hashes_per_second > 0 &&
-         hashes_per_second != g_stratum.benchmark_hashes_per_second;
+  return hashes_per_second > 0;
 }
 
 static void hashrate_average_seed_locked(

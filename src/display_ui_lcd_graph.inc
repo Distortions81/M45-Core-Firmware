@@ -204,8 +204,10 @@ static void lcd_draw_fancy_status_line(int y) {
 
   if (y >= 3 && y < 3 + LCD_FONT_HEIGHT) {
     lcd_draw_text_line(y, 6, 3, ip, LCD_RGB565_TEXT, 150);
-    const int w = lcd_text_width(hashrate);
-    lcd_draw_text_line(y, LCD_WIDTH - w - 6, 3, hashrate, LCD_RGB565_CYAN, 150);
+    if (hashrate[0] != '\0') {
+      const int w = lcd_text_width(hashrate);
+      lcd_draw_text_line(y, LCD_WIDTH - w - 6, 3, hashrate, LCD_RGB565_CYAN, 150);
+    }
   }
   if (y >= 153 && y < 153 + LCD_FONT_HEIGHT) {
     lcd_draw_text_line(y, 6, 153, pool, LCD_RGB565_TEXT, 210);
