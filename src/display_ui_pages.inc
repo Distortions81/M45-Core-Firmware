@@ -11,8 +11,16 @@ static bool oled_draw_setup_qr(int x, int y) {
 static void oled_hashrate_text(char* out, size_t out_size) {
   uint32_t hashes = 0;
   stratum_hashrate_snapshot(&hashes, NULL);
-  if (hashes >= 1000) {
-    snprintf(out, out_size, "%lu kH/s", (unsigned long)((hashes + 500U) / 1000U));
+  if (hashes >= 1000000U) {
+    const uint32_t milli_mh = (hashes + 500U) / 1000U;
+    snprintf(out, out_size, "%lu.%03lu MH/s",
+             (unsigned long)(milli_mh / 1000U),
+             (unsigned long)(milli_mh % 1000U));
+  } else if (hashes >= 1000U) {
+    const uint32_t deci_kh = (hashes + 50U) / 100U;
+    snprintf(out, out_size, "%lu.%lu kH/s",
+             (unsigned long)(deci_kh / 10U),
+             (unsigned long)(deci_kh % 10U));
   } else {
     snprintf(out, out_size, "%lu H/s", (unsigned long)hashes);
   }

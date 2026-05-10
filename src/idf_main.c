@@ -37,7 +37,7 @@ static const int64_t SETUP_DISPLAY_REFRESH_US = 5000000LL;
 static const int64_t RUNTIME_DISPLAY_CHECK_US = 1000000LL;
 static const int64_t RUNTIME_CONNECTED_DISPLAY_CHECK_US = 1000000LL;
 static const int64_t RUNTIME_PRE_POOL_REFRESH_US = 1000000LL;
-static const int64_t RUNTIME_HASHRATE_REFRESH_US = 60000000LL;
+static const int64_t RUNTIME_HASHRATE_REFRESH_US = 15000000LL;
 static const int64_t DISPLAY_SLEEP_MINUTE_US = 60000000LL;
 
 static int64_t g_last_display_check_us = 0;
