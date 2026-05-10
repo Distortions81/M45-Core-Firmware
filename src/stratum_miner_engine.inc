@@ -6,10 +6,20 @@ static void miner_add_hashes(uint32_t hashes) {
   portEXIT_CRITICAL(&g_miner_stats_mux);
 }
 
+void stratum_hashrate_snapshot(uint32_t* hashes_per_second, uint64_t* hashes_total) {
+  portENTER_CRITICAL(&g_miner_stats_mux);
+  if (hashes_per_second != NULL) {
+    *hashes_per_second = g_stratum_runtime.hashes_per_second;
+  }
+  if (hashes_total != NULL) {
+    *hashes_total = g_stratum_runtime.hashes_total;
+  }
+  portEXIT_CRITICAL(&g_miner_stats_mux);
+}
+
 static void miner_reset_hashrate_sample(bool zero_visible_hashrate) {
   portENTER_CRITICAL(&g_miner_stats_mux);
-  g_hashrate_sample_us = 0;
-  g_hashrate_sample_total = g_stratum_runtime.hashes_total;
+  g_hashrate_sample_count = 0;
   if (zero_visible_hashrate) {
     g_stratum_runtime.hashes_per_second = 0;
   }
@@ -75,11 +85,7 @@ static bool miner_claim_batch(
     miner_work_t* out,
     uint32_t* start_nonce,
     uint32_t* claimed_nonce_count) {
-#if STRATUM_ASM_CANDIDATE_LOOP
-  *claimed_nonce_count = STRATUM_MINE_BATCH + STRATUM_MINE_CANDIDATE_GUARD_NONCES;
-#else
   *claimed_nonce_count = STRATUM_MINE_BATCH;
-#endif
   return miner_claim_range(out, start_nonce, *claimed_nonce_count);
 }
 
@@ -513,9 +519,22 @@ static miner_scan_result_t IRAM_ATTR miner_scan_batch(const miner_work_t* work, 
 #if STRATUM_ASM_CANDIDATE_LOOP
     while (i < scan_end && !result.queue_full && !result.stale_work) {
       const uint32_t nonce_base = start_nonce + i;
+      bool candidate_found = false;
+      const uint32_t max_hashes = scan_end - i;
       const uint32_t scanned_hashes =
-          miner_scan_until_candidate_asm(work, nonce_base, candidate_raw_zero_mask);
+          miner_scan_until_candidate_asm(work,
+                                         nonce_base,
+                                         candidate_raw_zero_mask,
+                                         max_hashes,
+                                         &candidate_found);
+      if (UNLIKELY(scanned_hashes == 0 || scanned_hashes > max_hashes)) {
+        result.stale_work = true;
+        break;
+      }
       i += scanned_hashes;
+      if (!candidate_found) {
+        continue;
+      }
       const uint32_t candidate_nonce = start_nonce + i - 1U;
       const uint32_t compare_word0 = byteswap32(SHA_TEXT_READ(reg, apb, 28));
       if (compare_word0 > t0) {

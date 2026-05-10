@@ -23,8 +23,6 @@ Options:
   --synthetic-hashes-per-task N
                    Override fixed hashes per benchmark worker task.
   --mine-batch N   Override runtime Stratum nonce batch size.
-  --candidate-guard N
-                   Override runtime Stratum ASM nonce ownership guard.
   --yield-batches N
                    Override runtime Stratum batches between task yields.
   --task-wdt-ms N  Override task watchdog timeout in milliseconds.
@@ -41,7 +39,6 @@ lcd_debug_dirty_rects=false
 test_block_found=false
 synthetic_hashes_per_task=""
 mine_batch=""
-candidate_guard=""
 yield_batches=""
 task_wdt_ms=""
 
@@ -85,12 +82,6 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || fail "--mine-batch requires a positive integer"
       [[ "$2" =~ ^[1-9][0-9]*$ ]] || fail "--mine-batch requires a positive integer"
       mine_batch="$2"
-      shift 2
-      ;;
-    --candidate-guard)
-      [[ $# -ge 2 ]] || fail "--candidate-guard requires a positive integer"
-      [[ "$2" =~ ^[1-9][0-9]*$ ]] || fail "--candidate-guard requires a positive integer"
-      candidate_guard="$2"
       shift 2
       ;;
     --yield-batches)
@@ -163,9 +154,6 @@ if [[ -n "${synthetic_hashes_per_task}" ]]; then
 fi
 if [[ -n "${mine_batch}" ]]; then
   idf_args+=(-DAPP_STRATUM_MINE_BATCH="${mine_batch}")
-fi
-if [[ -n "${candidate_guard}" ]]; then
-  idf_args+=(-DAPP_STRATUM_MINE_CANDIDATE_GUARD_NONCES="${candidate_guard}")
 fi
 if [[ -n "${yield_batches}" ]]; then
   idf_args+=(-DAPP_STRATUM_MINE_YIELD_BATCHES="${yield_batches}")

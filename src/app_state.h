@@ -92,11 +92,6 @@
 #ifndef APP_STRATUM_MINE_YIELD_BATCHES
 #define APP_STRATUM_MINE_YIELD_BATCHES 0
 #endif
-#ifndef APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES
-// Extra nonce ownership for the unbounded hardware ASM candidate loop. This is
-// intentionally outside the hot loop; it is not a per-hash scan limit.
-#define APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES 1048576U
-#endif
 #ifndef APP_STRATUM_SOFTWARE_MINER_ENABLED
 #define APP_STRATUM_SOFTWARE_MINER_ENABLED 1
 #endif
@@ -113,7 +108,6 @@
 #endif
 #define STRATUM_MINE_BATCH APP_STRATUM_MINE_BATCH
 #define STRATUM_MINE_YIELD_BATCHES APP_STRATUM_MINE_YIELD_BATCHES
-#define STRATUM_MINE_CANDIDATE_GUARD_NONCES APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES
 #define STRATUM_SOFTWARE_MINER_ENABLED APP_STRATUM_SOFTWARE_MINER_ENABLED
 #define STRATUM_SOFTWARE_MINE_BATCH APP_STRATUM_SOFTWARE_MINE_BATCH
 #define STRATUM_MIN_CANDIDATE_TARGET_WORD0 APP_STRATUM_MIN_CANDIDATE_TARGET_WORD0
@@ -125,8 +119,12 @@
 #define STRATUM_SOFTWARE_MINER_TASK_PRIORITY 0
 #define STRATUM_SESSION_POLL_MS 100
 #define STRATUM_SESSION_IDLE_POLL_MS 1000
-#define STRATUM_INITIAL_HASHRATE_SAMPLE_MS 5000
-#define STRATUM_HASHRATE_SAMPLE_MS 15000
+// Report current hashrate from a short rolling window. One-second samples keep
+// the UI responsive while the 30-second window hides hardware-counter jitter.
+#define STRATUM_HASHRATE_SAMPLE_MS 1000
+#define STRATUM_HASHRATE_WINDOW_MS 30000
+#define STRATUM_HASHRATE_MIN_SPAN_MS 3000
+#define STRATUM_HASHRATE_MAX_SAMPLES 40
 #ifndef APP_STRATUM_BOOT_BENCHMARK_SAMPLE_US
 #define APP_STRATUM_BOOT_BENCHMARK_SAMPLE_US 1500000
 #endif
@@ -278,6 +276,7 @@ const char* pool_status_text(void);
 void pool_endpoint_text(char* out, size_t out_size);
 void shares_per_min_text(char* out, size_t out_size);
 const char* current_difficulty_text(void);
+void stratum_hashrate_snapshot(uint32_t* hashes_per_second, uint64_t* hashes_total);
 void device_name_text(char* out, size_t out_size);
 
 void start_http_server(void);

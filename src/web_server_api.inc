@@ -66,10 +66,16 @@ static esp_err_t stats_handler(httpd_req_t* req) {
   char hashrate_average[64];
   char payout_percent[16];
   char last_block_nonce[16];
+  uint32_t hashes_per_second = 0;
+  uint64_t hashes_total = 0;
   uptime_text(uptime, sizeof(uptime));
   pool_endpoint_text(endpoint, sizeof(endpoint));
   shares_per_min_text(shares_per_min, sizeof(shares_per_min));
-  format_hashrate_average_text(hashrate_average, sizeof(hashrate_average));
+  stratum_hashrate_snapshot(&hashes_per_second, &hashes_total);
+  format_hashrate_average_text(hashes_per_second,
+                               hashes_total,
+                               hashrate_average,
+                               sizeof(hashrate_average));
   format_payout_percent_text(payout_percent, sizeof(payout_percent));
   snprintf(last_block_nonce,
            sizeof(last_block_nonce),
@@ -77,12 +83,12 @@ static esp_err_t stats_handler(httpd_req_t* req) {
            (unsigned long)g_stratum_runtime.last_found_block_nonce);
   snprintf(line,
            sizeof(line),
-           "%s,%s,%s,%s,%u,%s,%s,%u,%u,%s,%s,%u,%s,%u,%s,%u\n",
+           "%s,%s,%s,%s,%u,%s,%s,%u,%u,%s,%s,%u,%s,%u,%s,%u,%llu\n",
            uptime,
            pool_status_text(),
            endpoint,
            shares_per_min,
-           (unsigned)g_stratum_runtime.hashes_per_second,
+           (unsigned)hashes_per_second,
            hashrate_average,
            current_difficulty_text(),
            (unsigned)g_stratum_runtime.submitted,
@@ -93,7 +99,8 @@ static esp_err_t stats_handler(httpd_req_t* req) {
            last_block_nonce,
            (unsigned)g_stratum_runtime.last_found_block_share_difficulty,
            g_stratum_runtime.last_found_block_hash,
-           (unsigned)g_system.block_alerts);
+           (unsigned)g_system.block_alerts,
+           (unsigned long long)hashes_total);
   httpd_resp_set_type(req, "text/csv");
   set_text_response_headers(req);
   return httpd_resp_sendstr(req, line);

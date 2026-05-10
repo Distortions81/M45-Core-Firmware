@@ -69,21 +69,30 @@ static inline uint32_t IRAM_ATTR miner_candidate_raw_zero_mask(uint32_t target_w
 }
 
 #if STRATUM_ASM_CANDIDATE_LOOP
+#define MINER_ASM_CANDIDATE_FOUND_FLAG 0x80000000UL
+#define MINER_ASM_HASH_COUNT_MASK 0x7fffffffUL
+
 extern uint32_t miner_scan_until_candidate_xtensa(
     const uint32_t* block0,
     const uint32_t* block1,
     uint32_t swapped_nonce,
-    uint32_t raw_zero_mask);
+    uint32_t raw_zero_mask,
+    uint32_t max_hashes);
 
 static inline __attribute__((always_inline)) uint32_t IRAM_ATTR
 miner_scan_until_candidate_asm(
     const miner_work_t* work,
     uint32_t start_nonce,
-    uint32_t candidate_raw_zero_mask) {
-  return miner_scan_until_candidate_xtensa(work->hw_block0,
-                                           work->hw_block1,
-                                           byteswap32(start_nonce),
-                                           candidate_raw_zero_mask);
+    uint32_t candidate_raw_zero_mask,
+    uint32_t max_hashes,
+    bool* candidate_found) {
+  const uint32_t result = miner_scan_until_candidate_xtensa(work->hw_block0,
+                                                           work->hw_block1,
+                                                           byteswap32(start_nonce),
+                                                           candidate_raw_zero_mask,
+                                                           max_hashes);
+  *candidate_found = (result & MINER_ASM_CANDIDATE_FOUND_FLAG) != 0;
+  return result & MINER_ASM_HASH_COUNT_MASK;
 }
 #endif
 

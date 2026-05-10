@@ -106,7 +106,8 @@ static void lcd_graph_push_level(uint8_t level, uint8_t share_level) {
 
 static bool lcd_update_minute_history(void) {
   const int64_t minute = esp_timer_get_time() / 60000000LL;
-  const uint64_t hashes_total = g_stratum_runtime.hashes_total;
+  uint64_t hashes_total = 0;
+  stratum_hashrate_snapshot(NULL, &hashes_total);
   const uint32_t found_shares = g_stratum_runtime.found_shares;
   lcd_graph_ensure_history(minute, hashes_total, found_shares);
 
@@ -223,7 +224,9 @@ static void lcd_draw_fancy_graph_line(int y) {
     }
   }
 
-  const uint8_t current_level = lcd_graph_quantize_level(g_stratum_runtime.hashes_per_second);
+  uint32_t current_hashrate = 0;
+  stratum_hashrate_snapshot(&current_hashrate, NULL);
+  const uint8_t current_level = lcd_graph_quantize_level(current_hashrate);
   const int best_row_center_y = LCD_GRAPH_TOP + 64;
   const int best_text_y = best_row_center_y - (LCD_FONT_HEIGHT / 2);
   if (y >= best_text_y && y < best_text_y + LCD_FONT_HEIGHT) {
@@ -332,7 +335,8 @@ static void lcd_flush_fancy_runtime_page(void) {
   oled_hashrate_text(hashrate_text, sizeof(hashrate_text));
   lcd_pool_host_text(pool, sizeof(pool));
   lcd_format_uptime_compact(uptime, sizeof(uptime));
-  const uint32_t hashrate = g_stratum_runtime.hashes_per_second;
+  uint32_t hashrate = 0;
+  stratum_hashrate_snapshot(&hashrate, NULL);
   const uint32_t best_share = g_stratum_runtime.best_share;
   const uint8_t current_level = lcd_graph_quantize_level(hashrate);
   const bool mode_changed = g_lcd_last_flushed_page != g_display_page ||

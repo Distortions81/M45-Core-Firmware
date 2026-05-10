@@ -44,28 +44,79 @@ static void stratum_ensure_miner_tasks(void) {
 #endif
 }
 
+static void stratum_hashrate_drop_oldest_locked(void) {
+  if (g_hashrate_sample_count == 0) {
+    return;
+  }
+  memmove(g_hashrate_samples,
+          g_hashrate_samples + 1,
+          (g_hashrate_sample_count - 1U) * sizeof(g_hashrate_samples[0]));
+  --g_hashrate_sample_count;
+}
+
+static void stratum_hashrate_seed_locked(int64_t now, uint64_t hashes_total) {
+  g_hashrate_samples[0] = (stratum_hashrate_sample_t){
+      .time_us = now,
+      .hashes_total = hashes_total,
+  };
+  g_hashrate_sample_count = 1;
+}
+
+static void stratum_hashrate_append_locked(int64_t now, uint64_t hashes_total) {
+  if (g_hashrate_sample_count >= STRATUM_HASHRATE_MAX_SAMPLES) {
+    stratum_hashrate_drop_oldest_locked();
+  }
+  g_hashrate_samples[g_hashrate_sample_count++] = (stratum_hashrate_sample_t){
+      .time_us = now,
+      .hashes_total = hashes_total,
+  };
+}
+
 static void stratum_update_hashrate(void) {
   const int64_t now = esp_timer_get_time();
   portENTER_CRITICAL(&g_miner_stats_mux);
   const uint64_t hashes_total = g_stratum_runtime.hashes_total;
-  if (g_hashrate_sample_us == 0) {
-    g_hashrate_sample_us = now;
-    g_hashrate_sample_total = hashes_total;
+  if (!g_mining_job.ready) {
+    g_hashrate_sample_count = 0;
+    g_stratum_runtime.hashes_per_second = 0;
     portEXIT_CRITICAL(&g_miner_stats_mux);
     return;
   }
-  const int64_t elapsed = now - g_hashrate_sample_us;
-  const int64_t sample_ms = g_stratum_runtime.hashes_per_second == 0
-                                ? STRATUM_INITIAL_HASHRATE_SAMPLE_MS
-                                : STRATUM_HASHRATE_SAMPLE_MS;
-  if (elapsed < sample_ms * 1000LL) {
+  if (g_hashrate_sample_count == 0) {
+    stratum_hashrate_seed_locked(now, hashes_total);
     portEXIT_CRITICAL(&g_miner_stats_mux);
     return;
   }
-  const uint64_t delta = hashes_total - g_hashrate_sample_total;
-  g_stratum_runtime.hashes_per_second = (uint32_t)((delta * 1000000ULL) / (uint64_t)elapsed);
-  g_hashrate_sample_total = hashes_total;
-  g_hashrate_sample_us = now;
+
+  const stratum_hashrate_sample_t last = g_hashrate_samples[g_hashrate_sample_count - 1U];
+  if (now <= last.time_us || hashes_total < last.hashes_total) {
+    stratum_hashrate_seed_locked(now, hashes_total);
+    portEXIT_CRITICAL(&g_miner_stats_mux);
+    return;
+  }
+  if (now - last.time_us < STRATUM_HASHRATE_SAMPLE_MS * 1000LL) {
+    portEXIT_CRITICAL(&g_miner_stats_mux);
+    return;
+  }
+
+  stratum_hashrate_append_locked(now, hashes_total);
+  const int64_t cutoff = now - STRATUM_HASHRATE_WINDOW_MS * 1000LL;
+  while (g_hashrate_sample_count > 2 && g_hashrate_samples[1].time_us < cutoff) {
+    stratum_hashrate_drop_oldest_locked();
+  }
+
+  const stratum_hashrate_sample_t oldest = g_hashrate_samples[0];
+  const stratum_hashrate_sample_t newest = g_hashrate_samples[g_hashrate_sample_count - 1U];
+  if (newest.time_us > oldest.time_us && newest.hashes_total >= oldest.hashes_total) {
+    const uint64_t elapsed_us = (uint64_t)(newest.time_us - oldest.time_us);
+    if (elapsed_us >= STRATUM_HASHRATE_MIN_SPAN_MS * 1000ULL) {
+      const uint64_t hash_delta = newest.hashes_total - oldest.hashes_total;
+      const uint64_t hashes_per_second = (hash_delta * 1000000ULL) / elapsed_us;
+      g_stratum_runtime.hashes_per_second = hashes_per_second > UINT32_MAX
+                                                ? UINT32_MAX
+                                                : (uint32_t)hashes_per_second;
+    }
+  }
   portEXIT_CRITICAL(&g_miner_stats_mux);
 }
 

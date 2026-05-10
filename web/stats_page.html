@@ -120,6 +120,7 @@
         <div class="sparkline-pill"><canvas id="hashrate-graph" width="480" height="84"></canvas></div>
         <div class="value" data-stat="hashes_per_sec">0 H/s</div>
         <div class="value value-small" data-stat="hashrate_average">Average: gathering</div>
+        <div class="value value-small" data-stat="hashes_total">Total: 0 H</div>
       </div>
       <div class="stat">
         <span class="label">Uptime</span>
@@ -243,10 +244,33 @@
       if(!Number.isFinite(number)||number<=0){
         return '0 H/s';
       }
+      if(number>=1000000){
+        return (number/1000000).toFixed(3)+' MH/s';
+      }
       if(number>=1000){
         return (number/1000).toFixed(1)+' kH/s';
       }
       return number.toFixed(0)+' H/s';
+    }
+
+    function formatHashCount(value){
+      const number=Number(value);
+      if(!Number.isFinite(number)||number<=0){
+        return '0 H';
+      }
+      if(number>=1000000000000){
+        return (number/1000000000000).toFixed(2)+' TH';
+      }
+      if(number>=1000000000){
+        return (number/1000000000).toFixed(2)+' GH';
+      }
+      if(number>=1000000){
+        return (number/1000000).toFixed(2)+' MH';
+      }
+      if(number>=1000){
+        return (number/1000).toFixed(1)+' kH';
+      }
+      return number.toFixed(0)+' H';
     }
 
     function formatMicrodifficulty(value){
@@ -392,13 +416,9 @@
       }
       const scaleValues=visibleHistory.filter((value)=>value>0);
       const visibleValues=scaleValues.length>0?scaleValues:visibleHistory;
-      const minValue=Math.min(...visibleValues);
-      const maxValue=Math.max(...visibleValues,1);
-      const midValue=(minValue+maxValue)/2;
-      const minRange=Math.max(maxValue*.08,1000);
-      const valueRange=Math.max(maxValue-minValue,minRange);
-      const scaleMin=Math.max(0,midValue-valueRange/2);
-      const scaleMax=Math.max(scaleMin+1,midValue+valueRange/2);
+      const maxValue=Math.max(...visibleValues,1000);
+      const scaleMin=0;
+      const scaleMax=Math.max(1,maxValue*1.08);
       graphContext.strokeStyle=cssColor('--muted');
       graphContext.globalAlpha=.16;
       graphContext.beginPath();
@@ -428,6 +448,7 @@
       if(statNodes.shares_per_min){statNodes.shares_per_min.textContent=formatNumber(data.shares_per_min,2);}
       if(statNodes.hashes_per_sec){statNodes.hashes_per_sec.textContent=formatHashrate(data.hashes_per_sec);}
       if(statNodes.hashrate_average){statNodes.hashrate_average.textContent=data.hashrate_average||'Average: gathering';}
+      if(statNodes.hashes_total){statNodes.hashes_total.textContent='Total: '+formatHashCount(data.hashes_total);}
       if(statNodes.current_difficulty_micro){statNodes.current_difficulty_micro.textContent=formatMicrodifficulty(data.current_difficulty);}
       if(statNodes.current_difficulty_raw){statNodes.current_difficulty_raw.textContent=formatNumber(data.current_difficulty,10);}
       if(statNodes.submitted_shares){statNodes.submitted_shares.textContent=String(data.submitted_shares||0);}
@@ -463,7 +484,8 @@
         last_found_block_nonce:fields[12]||'0x00000000',
         last_found_block_difficulty:fields[13]||'0',
         last_found_block_hash:fields[14]||'',
-        block_alerts_enabled:fields[15]||'1'
+        block_alerts_enabled:fields[15]||'1',
+        hashes_total:fields[16]||'0'
       };
     }
 

@@ -31,7 +31,7 @@
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #define STRATUM_STALE_WORK_CHECK_NONCES 65536U
-#define STRATUM_HASH_PROGRESS_NONCES 131072U
+#define STRATUM_HASH_PROGRESS_NONCES 65536U
 #define STRATUM_SOFTWARE_STALE_WORK_CHECK_NONCES 256U
 #define STRATUM_BEST_SHARE_SAVE_DELAY_US (30LL * 1000000LL)
 #define STRATUM_BEST_SHARE_SAVE_MIN_INTERVAL_US (5LL * 60LL * 1000000LL)
@@ -120,6 +120,11 @@ typedef struct {
 } miner_task_context_t;
 
 typedef struct {
+  int64_t time_us;
+  uint64_t hashes_total;
+} stratum_hashrate_sample_t;
+
+typedef struct {
   uint8_t index;
   miner_work_t work;
   uint32_t hw_block0[16] __attribute__((aligned(16)));
@@ -153,8 +158,8 @@ static volatile bool g_stratum_reconnect_requested = false;
 static volatile bool g_stratum_switch_to_primary_requested = false;
 static volatile bool g_stratum_primary_probe_in_progress = false;
 static int64_t g_stratum_last_primary_probe_us = 0;
-static uint64_t g_hashrate_sample_total = 0;
-static int64_t g_hashrate_sample_us = 0;
+static stratum_hashrate_sample_t g_hashrate_samples[STRATUM_HASHRATE_MAX_SAMPLES];
+static size_t g_hashrate_sample_count = 0;
 static uint32_t g_synthetic_hw_block0[16] = {0};
 static uint32_t g_synthetic_hw_block1[16] = {0};
 static volatile uint32_t g_benchmark_sink = 0;

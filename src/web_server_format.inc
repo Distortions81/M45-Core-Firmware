@@ -201,12 +201,11 @@ static void hashrate_average_seed_locked(
   g_hashrate_average_waiting_for_first_delta = wait_for_first_delta;
 }
 
-static void format_hashrate_average_text(char* out, size_t out_size) {
+static void format_hashrate_average_text(
+    uint32_t hashes_per_second, uint64_t hashes_total, char* out, size_t out_size) {
   const int64_t now = esp_timer_get_time();
   const bool connected = g_stratum_runtime.connected;
   const uint64_t connected_at_us = g_stratum_runtime.connected_at_us;
-  const uint32_t hashes_per_second = g_stratum_runtime.hashes_per_second;
-  const uint64_t hashes_total = g_stratum_runtime.hashes_total;
   uint64_t elapsed_us = 0;
   uint64_t hash_delta = 0;
 

@@ -5,10 +5,12 @@
  *     const uint32_t* block0,
  *     const uint32_t* block1,
  *     uint32_t swapped_nonce,
- *     uint32_t raw_zero_mask);
+ *     uint32_t raw_zero_mask,
+ *     uint32_t max_hashes);
  *
  * Return value:
- *   hashes scanned; the last scanned hash meets raw_zero_mask
+ *   bits 0..30: hashes scanned
+ *   bit 31: set when the last scanned hash meets raw_zero_mask
  */
 
   .section .iram1, "ax"
@@ -43,14 +45,17 @@
   .word 0xffffff00
 .Lsha_pad:
   .word 0x80000000
+.Lcandidate_found_flag:
+  .word 0x80000000
 
   .align 4
   .global miner_scan_until_candidate_xtensa
   .type miner_scan_until_candidate_xtensa, @function
 
 miner_scan_until_candidate_xtensa:
-  entry   a1, 16
+  entry   a1, 32
 
+  s32i    a6, a1, 0
   extui   a14, a5, 8, 8
   l32r    a6, .Lsha_text_base
   l32r    a7, .Lsha_cmd_base
@@ -183,10 +188,17 @@ miner_scan_until_candidate_xtensa:
 
   addi.n  a10, a10, 1
   DPORT_SEQUENCE_READ8 a11, a6, 28
-  bnez.n  a11, .Lscan_next
+  bnez.n  a11, .Lmaybe_done
   DPORT_SEQUENCE_READ8 a11, a6, 29
   and     a11, a11, a14
-  bnez.n  a11, .Lscan_next
+  bnez.n  a11, .Lmaybe_done
 
+  l32r    a11, .Lcandidate_found_flag
+  or      a2, a10, a11
+  retw.n
+
+.Lmaybe_done:
+  l32i    a11, a1, 0
+  bltu    a10, a11, .Lscan_next
   mov.n   a2, a10
   retw.n

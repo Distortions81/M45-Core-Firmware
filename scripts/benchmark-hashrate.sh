@@ -127,7 +127,7 @@ format_hps() {
 }
 
 if [[ -n "${samples_file}" ]]; then
-  printf 'sample,elapsed_s,phase,pool_status,shares_per_min,hashes_per_sec,hashrate_average,current_difficulty,submitted_shares,rejected_shares,result\n' >"${samples_file}"
+  printf 'sample,elapsed_s,phase,pool_status,shares_per_min,hashes_per_sec,hashrate_average,current_difficulty,submitted_shares,rejected_shares,hashes_total,result\n' >"${samples_file}"
 fi
 
 sample_window=$((duration - warmup))
@@ -173,12 +173,32 @@ while [[ "$(date +%s)" -lt "${deadline_epoch}" ]]; do
   current_difficulty="0"
   submitted_shares="0"
   rejected_shares="0"
+  hashes_total=""
 
   if [[ "${result}" == "ok" ]]; then
-    IFS=, read -r uptime pool_status endpoint shares_per_min hashes_per_sec hashrate_average current_difficulty submitted_shares rejected_shares _ <<<"${response}"
+    IFS=, read -r \
+      uptime \
+      pool_status \
+      endpoint \
+      shares_per_min \
+      hashes_per_sec \
+      hashrate_average \
+      current_difficulty \
+      submitted_shares \
+      rejected_shares \
+      _payout_status \
+      _payout_percent \
+      _found_blocks \
+      _last_block_nonce \
+      _last_block_difficulty \
+      _last_block_hash \
+      _block_alerts_enabled \
+      hashes_total \
+      _ <<<"${response}"
     if [[ ! "${hashes_per_sec}" =~ ^[0-9]+$ ||
           ! "${submitted_shares}" =~ ^[0-9]+$ ||
-          ! "${rejected_shares}" =~ ^[0-9]+$ ]]; then
+          ! "${rejected_shares}" =~ ^[0-9]+$ ||
+          ( -n "${hashes_total}" && ! "${hashes_total}" =~ ^[0-9]+$ ) ]]; then
       result="bad_stats"
     fi
   fi
@@ -217,6 +237,7 @@ while [[ "$(date +%s)" -lt "${deadline_epoch}" ]]; do
       "${current_difficulty}" \
       "${submitted_shares}" \
       "${rejected_shares}" \
+      "${hashes_total}" \
       "${result}" >>"${samples_file}"
   fi
 

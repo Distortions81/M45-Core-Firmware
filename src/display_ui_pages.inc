@@ -9,7 +9,8 @@ static bool oled_draw_setup_qr(int x, int y) {
 }
 
 static void oled_hashrate_text(char* out, size_t out_size) {
-  const uint32_t hashes = g_stratum_runtime.hashes_per_second;
+  uint32_t hashes = 0;
+  stratum_hashrate_snapshot(&hashes, NULL);
   if (hashes >= 1000) {
     snprintf(out, out_size, "%lu kH/s", (unsigned long)((hashes + 500U) / 1000U));
   } else {
@@ -620,7 +621,8 @@ static void oled_graph_push_level(uint8_t level, uint8_t share_level) {
 
 static void oled_update_minute_history(void) {
   const int64_t minute = esp_timer_get_time() / 60000000LL;
-  const uint64_t hashes_total = g_stratum_runtime.hashes_total;
+  uint64_t hashes_total = 0;
+  stratum_hashrate_snapshot(NULL, &hashes_total);
   const uint32_t found_shares = g_stratum_runtime.found_shares;
 
   if (g_oled_graph_last_bucket_minute < 0 || g_oled_graph_last_bucket_minute > minute) {
@@ -726,7 +728,9 @@ static void oled_draw_graph_page(void) {
     }
   }
 
-  const uint8_t current_level = oled_graph_quantize_level(g_stratum_runtime.hashes_per_second);
+  uint32_t current_hashrate = 0;
+  stratum_hashrate_snapshot(&current_hashrate, NULL);
+  const uint8_t current_level = oled_graph_quantize_level(current_hashrate);
   for (uint8_t age = 0; age < OLED_WIDTH; ++age) {
     const int x = (OLED_WIDTH - 1) - (int)age;
     const bool current_minute = age == 0;
