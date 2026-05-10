@@ -34,8 +34,12 @@ void start_http_server(void) {
   // Do not trim these casually. Mobile browsers and chunked settings pages
   // need the handler/socket headroom more than we need the small RAM savings.
   config.max_uri_handlers = 32;
-  config.max_open_sockets = 6;
+  config.max_open_sockets = HTTP_SERVER_MAX_OPEN_SOCKETS;
+  config.backlog_conn = HTTP_SERVER_BACKLOG_CONNECTIONS;
   config.stack_size = HTTP_SERVER_STACK_BYTES;
+  config.recv_wait_timeout = HTTP_SERVER_SOCKET_TIMEOUT_SECONDS;
+  config.send_wait_timeout = HTTP_SERVER_SOCKET_TIMEOUT_SECONDS;
+  config.lru_purge_enable = true;
 
   httpd_handle_t server = NULL;
   const esp_err_t start_result = httpd_start(&server, &config);

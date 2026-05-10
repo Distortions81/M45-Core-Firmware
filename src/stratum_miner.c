@@ -33,6 +33,8 @@
 #define STRATUM_STALE_WORK_CHECK_NONCES 65536U
 #define STRATUM_HASH_PROGRESS_NONCES 131072U
 #define STRATUM_SOFTWARE_STALE_WORK_CHECK_NONCES 256U
+#define STRATUM_BEST_SHARE_SAVE_DELAY_US (30LL * 1000000LL)
+#define STRATUM_BEST_SHARE_SAVE_MIN_INTERVAL_US (5LL * 60LL * 1000000LL)
 
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
 #define STRATUM_MINER_MODEL "M45View"
@@ -159,6 +161,11 @@ static volatile uint32_t g_benchmark_sink = 0;
 static char g_stratum_line[STRATUM_LINE_MAX];
 static char g_pending_notify_line[STRATUM_LINE_MAX];
 static bool g_pending_notify_available = false;
+static portMUX_TYPE g_best_share_save_mux = portMUX_INITIALIZER_UNLOCKED;
+static bool g_best_share_save_pending = false;
+static uint32_t g_best_share_save_value = 0;
+static int64_t g_best_share_save_requested_us = 0;
+static int64_t g_best_share_last_save_us = 0;
 
 static const DRAM_ATTR uint32_t SHA256_INITIAL_STATE[8] = {
     0x6a09e667UL, 0xbb67ae85UL, 0x3c6ef372UL, 0xa54ff53aUL,

@@ -217,23 +217,41 @@
           };
         });
       }
-      async function scanNetworks(){
+      const networkScanRetryLimit=10;
+      async function scanNetworks(attempt=0){
+        const scanAttempt=Number.isFinite(attempt)?attempt:0;
         scanButton.disabled=true;
         scanStatus.textContent='Scanning for networks...';
         networkList.innerHTML='';
         networkMore.innerHTML='';
+        let retrying=false;
         try{
           const response=await fetch('/api/networks',{cache:'no-store'});
+          if(response.status===202){
+            if(scanAttempt>=networkScanRetryLimit){
+              throw new Error('Scan timed out');
+            }
+            retrying=true;
+            window.setTimeout(()=>scanNetworks(scanAttempt+1),1200);
+            return;
+          }
           if(!response.ok){throw new Error('HTTP '+response.status);}
+          const refreshing=response.headers.get('X-Scan-Status')==='refreshing';
           const networks=parseNetworksText(await response.text());
           const visibleCount=Math.min(networks.length,3);
-          scanStatus.textContent='Showing '+visibleCount+' of '+networks.length+' networks.';
+          scanStatus.textContent=(refreshing?'Refreshing networks... showing ':'Showing ')+visibleCount+' of '+networks.length+' networks.';
           renderNetworks(networks);
+          if(refreshing&&scanAttempt<networkScanRetryLimit){
+            retrying=true;
+            window.setTimeout(()=>scanNetworks(scanAttempt+1),1200);
+          }
         }catch(error){
           scanStatus.textContent='Scan failed. Try again.';
           networkList.innerHTML='<li><span class="muted">'+error.message+'</span></li>';
         }finally{
-          scanButton.disabled=false;
+          if(!retrying){
+            scanButton.disabled=false;
+          }
         }
       }
       async function saveCredentials(){
@@ -289,7 +307,7 @@
         });
       }
       wifiErrorClose.addEventListener('click',()=>wifiErrorDialog.close());
-      scanButton.addEventListener('click',scanNetworks);
+      scanButton.addEventListener('click',()=>scanNetworks());
       saveButton.addEventListener('click',saveCredentials);
       scanNetworks();
     </script>

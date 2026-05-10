@@ -5,9 +5,11 @@
 #include <string.h>
 #include <sys/param.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <math.h>
 
 #include "esp_http_server.h"
+#include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
@@ -30,7 +32,13 @@ typedef struct {
 #define NETWORK_SCAN_CACHE_TTL_US (15LL * 1000000LL)
 #define NETWORK_SCAN_MAX_APS 20
 #define NETWORK_SCAN_CACHE_LINE_MAX 64
+#define NETWORK_SCAN_TASK_STACK_BYTES 6144
 #define HTTP_SERVER_STACK_BYTES 8192
+#define HTTP_SERVER_MAX_OPEN_SOCKETS 8
+#define HTTP_SERVER_BACKLOG_CONNECTIONS 8
+#define HTTP_SERVER_SOCKET_TIMEOUT_SECONDS 2
+#define HTTP_TEMPLATE_CHUNKED_THRESHOLD_BYTES 8192
+#define HTTP_TEMPLATE_CHUNK_BYTES 1024
 #define HASHRATE_AVERAGE_WINDOW_US (15LL * 60LL * 1000000LL)
 #define HASHRATE_AVERAGE_MIN_SPAN_US (60LL * 1000000LL)
 #define HASHRATE_AVERAGE_SAMPLE_US (15LL * 1000000LL)
@@ -39,6 +47,10 @@ typedef struct {
 static const char* TAG = "web";
 static char g_networks_cache[NETWORK_SCAN_MAX_APS * NETWORK_SCAN_CACHE_LINE_MAX];
 static int64_t g_networks_cache_us = 0;
+static bool g_networks_cache_valid = false;
+static portMUX_TYPE g_networks_cache_mux = portMUX_INITIALIZER_UNLOCKED;
+static bool g_network_scan_in_progress = false;
+static portMUX_TYPE g_network_scan_mux = portMUX_INITIALIZER_UNLOCKED;
 static char g_action_token[33];
 typedef struct {
   int64_t time_us;

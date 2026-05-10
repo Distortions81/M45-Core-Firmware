@@ -272,6 +272,7 @@ static bool stratum_session(int sock) {
     }
     stratum_drain_share_queue(sock, &submit_id, login);
     stratum_update_hashrate();
+    stratum_maybe_save_best_share();
     stratum_maybe_probe_primary_pool();
     if (g_stratum_reconnect_requested) {
       g_stratum_session_task_handle = NULL;
@@ -301,6 +302,7 @@ void stratum_task(void* arg) {
     if (!g_sta_connected || g_stratum.primary_host[0] == '\0' || g_stratum.wallet[0] == '\0') {
       g_stratum_runtime.enabled = false;
       stratum_set_disconnected();
+      stratum_maybe_save_best_share();
       vTaskDelay(pdMS_TO_TICKS(1000));
       continue;
     }
@@ -330,6 +332,7 @@ void stratum_task(void* arg) {
       rotate_endpoint = true;
     }
     stratum_set_disconnected();
+    stratum_maybe_save_best_share();
     if (g_stratum_switch_to_primary_requested) {
       g_stratum_runtime.using_backup = false;
       g_stratum_switch_to_primary_requested = false;

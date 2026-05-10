@@ -344,13 +344,61 @@ static void record_found_block(
   request_display_refresh();
 }
 
-static void save_best_share(void) {
+static void request_best_share_save(uint32_t best_share) {
+  const int64_t now = esp_timer_get_time();
+  portENTER_CRITICAL(&g_best_share_save_mux);
+  if (!g_best_share_save_pending) {
+    g_best_share_save_requested_us = now;
+    g_best_share_save_value = best_share;
+  } else if (best_share > g_best_share_save_value) {
+    g_best_share_save_value = best_share;
+  }
+  g_best_share_save_pending = true;
+  portEXIT_CRITICAL(&g_best_share_save_mux);
+}
+
+static bool save_best_share_value(uint32_t best_share) {
   nvs_handle_t nvs;
+  bool saved = false;
   if (nvs_open("stats", NVS_READWRITE, &nvs) == ESP_OK) {
-    if (nvs_set_u32(nvs, "best_share", g_stratum_runtime.best_share) == ESP_OK) {
-      nvs_commit(nvs);
+    if (nvs_set_u32(nvs, "best_share", best_share) == ESP_OK &&
+        nvs_commit(nvs) == ESP_OK) {
+      saved = true;
     }
     nvs_close(nvs);
+  }
+  return saved;
+}
+
+static void stratum_maybe_save_best_share(void) {
+  const int64_t now = esp_timer_get_time();
+  uint32_t best_share = 0;
+  bool should_save = false;
+
+  portENTER_CRITICAL(&g_best_share_save_mux);
+  const bool save_delay_elapsed =
+      g_best_share_save_requested_us != 0 &&
+      now - g_best_share_save_requested_us >= STRATUM_BEST_SHARE_SAVE_DELAY_US;
+  const bool min_interval_elapsed =
+      g_best_share_last_save_us == 0 ||
+      now - g_best_share_last_save_us >= STRATUM_BEST_SHARE_SAVE_MIN_INTERVAL_US;
+  if (g_best_share_save_pending && save_delay_elapsed && min_interval_elapsed) {
+    best_share = g_best_share_save_value;
+    g_best_share_save_pending = false;
+    should_save = true;
+  }
+  portEXIT_CRITICAL(&g_best_share_save_mux);
+
+  if (!should_save) {
+    return;
+  }
+
+  if (save_best_share_value(best_share)) {
+    portENTER_CRITICAL(&g_best_share_save_mux);
+    g_best_share_last_save_us = esp_timer_get_time();
+    portEXIT_CRITICAL(&g_best_share_save_mux);
+  } else {
+    request_best_share_save(best_share);
   }
 }
 

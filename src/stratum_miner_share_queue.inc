@@ -133,7 +133,7 @@ static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint
   }
   xSemaphoreGive(g_share_queue_mutex);
   if (best_share_updated) {
-    save_best_share();
+    request_best_share_save(g_stratum_runtime.best_share);
   }
   if (found_block) {
     record_found_block(nonce, share_difficulty, hash_be);

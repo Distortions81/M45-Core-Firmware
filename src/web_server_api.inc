@@ -106,14 +106,48 @@ static void append_network_ssid_field(char* out, size_t out_size, size_t* offset
   out[*offset] = '\0';
 }
 
-static esp_err_t networks_handler(httpd_req_t* req) {
-  const int64_t now = esp_timer_get_time();
-  if (g_networks_cache[0] != '\0' && now - g_networks_cache_us < NETWORK_SCAN_CACHE_TTL_US) {
-    httpd_resp_set_type(req, "text/plain");
-    set_common_response_headers(req);
-    return httpd_resp_sendstr(req, g_networks_cache);
+static bool networks_cache_snapshot(char* out, size_t out_size, int64_t now, bool require_fresh) {
+  bool available = false;
+  if (out_size == 0) {
+    return false;
   }
+  out[0] = '\0';
+  portENTER_CRITICAL(&g_networks_cache_mux);
+  const bool fresh = g_networks_cache_valid && now - g_networks_cache_us < NETWORK_SCAN_CACHE_TTL_US;
+  if (g_networks_cache_valid && (!require_fresh || fresh)) {
+    memcpy(out, g_networks_cache, out_size);
+    out[out_size - 1] = '\0';
+    available = true;
+  }
+  portEXIT_CRITICAL(&g_networks_cache_mux);
+  return available;
+}
 
+static void networks_cache_store(const char* cache) {
+  portENTER_CRITICAL(&g_networks_cache_mux);
+  memcpy(g_networks_cache, cache, sizeof(g_networks_cache));
+  g_networks_cache[sizeof(g_networks_cache) - 1] = '\0';
+  g_networks_cache_us = esp_timer_get_time();
+  g_networks_cache_valid = true;
+  portEXIT_CRITICAL(&g_networks_cache_mux);
+}
+
+static void networks_cache_clear(void) {
+  portENTER_CRITICAL(&g_networks_cache_mux);
+  g_networks_cache[0] = '\0';
+  g_networks_cache_us = 0;
+  g_networks_cache_valid = false;
+  portEXIT_CRITICAL(&g_networks_cache_mux);
+}
+
+static void network_scan_task_finish(void) {
+  portENTER_CRITICAL(&g_network_scan_mux);
+  g_network_scan_in_progress = false;
+  portEXIT_CRITICAL(&g_network_scan_mux);
+}
+
+static void network_scan_task(void* arg) {
+  (void)arg;
   wifi_scan_config_t scan_config = {
       .ssid = NULL,
       .bssid = NULL,
@@ -121,50 +155,112 @@ static esp_err_t networks_handler(httpd_req_t* req) {
       .show_hidden = false,
       .scan_type = WIFI_SCAN_TYPE_ACTIVE,
   };
-  esp_wifi_scan_start(&scan_config, true);
+  esp_err_t err = esp_wifi_scan_start(&scan_config, true);
   uint16_t count = 0;
-  esp_wifi_scan_get_ap_num(&count);
-  if (count > NETWORK_SCAN_MAX_APS) {
-    count = NETWORK_SCAN_MAX_APS;
-  }
   wifi_ap_record_t records[NETWORK_SCAN_MAX_APS];
   memset(records, 0, sizeof(records));
-  esp_wifi_scan_get_ap_records(&count, records);
+  if (err == ESP_OK) {
+    err = esp_wifi_scan_get_ap_num(&count);
+  }
+  if (err == ESP_OK) {
+    if (count > NETWORK_SCAN_MAX_APS) {
+      count = NETWORK_SCAN_MAX_APS;
+    }
+    if (count > 0) {
+      err = esp_wifi_scan_get_ap_records(&count, records);
+    }
+  }
 
-  for (uint16_t i = 0; i < count; ++i) {
-    for (uint16_t j = i + 1; j < count; ++j) {
-      if (records[j].rssi > records[i].rssi) {
-        const wifi_ap_record_t tmp = records[i];
-        records[i] = records[j];
-        records[j] = tmp;
+  if (err == ESP_OK) {
+    for (uint16_t i = 0; i < count; ++i) {
+      for (uint16_t j = i + 1; j < count; ++j) {
+        if (records[j].rssi > records[i].rssi) {
+          const wifi_ap_record_t tmp = records[i];
+          records[i] = records[j];
+          records[j] = tmp;
+        }
       }
     }
-  }
 
-  size_t offset = 0;
-  g_networks_cache[0] = '\0';
-  g_networks_cache_us = now;
-  for (uint16_t i = 0; i < count && offset + 1 < sizeof(g_networks_cache); ++i) {
-    append_network_ssid_field(g_networks_cache,
-                              sizeof(g_networks_cache),
-                              &offset,
-                              records[i].ssid,
-                              sizeof(records[i].ssid));
-    offset += snprintf(g_networks_cache + offset,
-                       sizeof(g_networks_cache) - offset,
-                       "\t%d\t%d\t%d\n",
-                       records[i].rssi,
-                       records[i].primary,
-                       records[i].authmode == WIFI_AUTH_OPEN ? 1 : 0);
-    if (offset >= sizeof(g_networks_cache)) {
-      g_networks_cache[sizeof(g_networks_cache) - 1] = '\0';
-      break;
+    char cache[sizeof(g_networks_cache)];
+    size_t offset = 0;
+    cache[0] = '\0';
+    for (uint16_t i = 0; i < count && offset + 1 < sizeof(cache); ++i) {
+      append_network_ssid_field(cache,
+                                sizeof(cache),
+                                &offset,
+                                records[i].ssid,
+                                sizeof(records[i].ssid));
+      offset += snprintf(cache + offset,
+                         sizeof(cache) - offset,
+                         "\t%d\t%d\t%d\n",
+                         records[i].rssi,
+                         records[i].primary,
+                         records[i].authmode == WIFI_AUTH_OPEN ? 1 : 0);
+      if (offset >= sizeof(cache)) {
+        cache[sizeof(cache) - 1] = '\0';
+        break;
+      }
     }
+    networks_cache_store(cache);
+  } else {
+    ESP_LOGW(TAG, "Wi-Fi scan failed: %s", esp_err_to_name(err));
   }
 
+  network_scan_task_finish();
+  vTaskDelete(NULL);
+}
+
+static bool start_network_scan_task(void) {
+  portENTER_CRITICAL(&g_network_scan_mux);
+  if (g_network_scan_in_progress) {
+    portEXIT_CRITICAL(&g_network_scan_mux);
+    return true;
+  }
+  g_network_scan_in_progress = true;
+  portEXIT_CRITICAL(&g_network_scan_mux);
+
+  const BaseType_t created = xTaskCreate(network_scan_task,
+                                         "wifi_scan",
+                                         NETWORK_SCAN_TASK_STACK_BYTES,
+                                         NULL,
+                                         tskIDLE_PRIORITY + 2,
+                                         NULL);
+  if (created != pdPASS) {
+    network_scan_task_finish();
+    ESP_LOGW(TAG, "Failed to start Wi-Fi scan task");
+    return false;
+  }
+  return true;
+}
+
+static esp_err_t networks_handler(httpd_req_t* req) {
+  const int64_t now = esp_timer_get_time();
+  char cached[sizeof(g_networks_cache)];
+  if (networks_cache_snapshot(cached, sizeof(cached), now, true)) {
+    httpd_resp_set_type(req, "text/plain");
+    set_common_response_headers(req);
+    return httpd_resp_sendstr(req, cached);
+  }
+
+  if (!start_network_scan_task()) {
+    httpd_resp_set_status(req, "503 Service Unavailable");
+    send_plain(req, "Wi-Fi scan unavailable");
+    return ESP_OK;
+  }
+
+  if (networks_cache_snapshot(cached, sizeof(cached), now, false)) {
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_set_hdr(req, "X-Scan-Status", "refreshing");
+    set_common_response_headers(req);
+    return httpd_resp_sendstr(req, cached);
+  }
+
+  httpd_resp_set_status(req, "202 Accepted");
   httpd_resp_set_type(req, "text/plain");
+  httpd_resp_set_hdr(req, "Retry-After", "1");
   set_common_response_headers(req);
-  return httpd_resp_sendstr(req, g_networks_cache);
+  return httpd_resp_sendstr(req, "scan\n");
 }
 
 static esp_err_t configure_handler(httpd_req_t* req) {
@@ -193,8 +289,7 @@ static esp_err_t configure_handler(httpd_req_t* req) {
     send_plain(req, "Wi-Fi save failed");
     return ESP_OK;
   }
-  g_networks_cache[0] = '\0';
-  g_networks_cache_us = 0;
+  networks_cache_clear();
   if (g_sta_connected || setup_mode) {
     send_plain(req, setup_mode ? "Wi-Fi verified. Rebooting now..." : "Wi-Fi saved. Rebooting now...");
     vTaskDelay(pdMS_TO_TICKS(300));
