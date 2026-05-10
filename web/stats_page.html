@@ -120,7 +120,6 @@
         <div class="sparkline-pill"><canvas id="hashrate-graph" width="480" height="84"></canvas></div>
         <div class="value" data-stat="hashes_per_sec">0 H/s</div>
         <div class="value value-small" data-stat="hashrate_average">Average: gathering</div>
-        <div class="value value-small" data-stat="hashes_total">Total: 0 H</div>
       </div>
       <div class="stat">
         <span class="label">Uptime</span>
@@ -148,6 +147,10 @@
       <div class="stat">
         <span class="label">Shares/min</span>
         <div class="value" data-stat="shares_per_min">0.00</div>
+      </div>
+      <div class="stat">
+        <span class="label">Best share</span>
+        <div class="value" data-stat="best_share">0</div>
       </div>
       <div class="stat">
         <span class="label">Mining difficulty</span>
@@ -253,24 +256,12 @@
       return number.toFixed(0)+' H/s';
     }
 
-    function formatHashCount(value){
+    function formatInteger(value){
       const number=Number(value);
       if(!Number.isFinite(number)||number<=0){
-        return '0 H';
+        return '0';
       }
-      if(number>=1000000000000){
-        return (number/1000000000000).toFixed(2)+' TH';
-      }
-      if(number>=1000000000){
-        return (number/1000000000).toFixed(2)+' GH';
-      }
-      if(number>=1000000){
-        return (number/1000000).toFixed(2)+' MH';
-      }
-      if(number>=1000){
-        return (number/1000).toFixed(1)+' kH';
-      }
-      return number.toFixed(0)+' H';
+      return Math.floor(number).toLocaleString('en-US');
     }
 
     function formatMicrodifficulty(value){
@@ -448,7 +439,7 @@
       if(statNodes.shares_per_min){statNodes.shares_per_min.textContent=formatNumber(data.shares_per_min,2);}
       if(statNodes.hashes_per_sec){statNodes.hashes_per_sec.textContent=formatHashrate(data.hashes_per_sec);}
       if(statNodes.hashrate_average){statNodes.hashrate_average.textContent=data.hashrate_average||'Average: gathering';}
-      if(statNodes.hashes_total){statNodes.hashes_total.textContent='Total: '+formatHashCount(data.hashes_total);}
+      if(statNodes.best_share){statNodes.best_share.textContent=formatInteger(data.best_share);}
       if(statNodes.current_difficulty_micro){statNodes.current_difficulty_micro.textContent=formatMicrodifficulty(data.current_difficulty);}
       if(statNodes.current_difficulty_raw){statNodes.current_difficulty_raw.textContent=formatNumber(data.current_difficulty,10);}
       if(statNodes.submitted_shares){statNodes.submitted_shares.textContent=String(data.submitted_shares||0);}
@@ -485,7 +476,7 @@
         last_found_block_difficulty:fields[13]||'0',
         last_found_block_hash:fields[14]||'',
         block_alerts_enabled:fields[15]||'1',
-        hashes_total:fields[16]||'0'
+        best_share:fields[17]||'0'
       };
     }
 

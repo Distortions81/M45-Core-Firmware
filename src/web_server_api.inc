@@ -83,7 +83,7 @@ static esp_err_t stats_handler(httpd_req_t* req) {
            (unsigned long)g_stratum_runtime.last_found_block_nonce);
   snprintf(line,
            sizeof(line),
-           "%s,%s,%s,%s,%u,%s,%s,%u,%u,%s,%s,%u,%s,%u,%s,%u,%llu\n",
+           "%s,%s,%s,%s,%u,%s,%s,%u,%u,%s,%s,%u,%s,%u,%s,%u,%llu,%u\n",
            uptime,
            pool_status_text(),
            endpoint,
@@ -100,7 +100,8 @@ static esp_err_t stats_handler(httpd_req_t* req) {
            (unsigned)g_stratum_runtime.last_found_block_share_difficulty,
            g_stratum_runtime.last_found_block_hash,
            (unsigned)g_system.block_alerts,
-           (unsigned long long)hashes_total);
+           (unsigned long long)hashes_total,
+           (unsigned)g_stratum_runtime.best_share);
   httpd_resp_set_type(req, "text/csv");
   set_text_response_headers(req);
   return httpd_resp_sendstr(req, line);
