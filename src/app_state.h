@@ -78,7 +78,9 @@
 #define STRATUM_SOCKET_TIMEOUT_MS 5000
 #define STRATUM_PRIMARY_PROBE_INTERVAL_MS 60000
 #define STRATUM_SOCKET_RX_BUFFER 512
+#ifndef APP_TASK_WDT_TIMEOUT_MS
 #define APP_TASK_WDT_TIMEOUT_MS 30000
+#endif
 #ifndef APP_STRATUM_MINE_BATCH
 // Keep batches below the hashrate sample window. Very large batches make
 // hashes_total update in coarse jumps, which can under-report OLED/web hashrate.
@@ -89,7 +91,7 @@
 #endif
 #ifndef APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES
 // Extra nonce ownership for the unbounded hardware ASM candidate loop. This is
-// not a scan limit and does not add instructions to the mining loop.
+// intentionally outside the hot loop; it is not a per-hash scan limit.
 #define APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES 1048576U
 #endif
 #ifndef APP_STRATUM_SOFTWARE_MINER_ENABLED
@@ -99,9 +101,9 @@
 #define APP_STRATUM_SOFTWARE_MINE_BATCH 512
 #endif
 #ifndef APP_STRATUM_MIN_CANDIDATE_TARGET_WORD0
-// Candidate gate for the hardware miner hot path. 0x0003ffff is a 14-bit
-// leading-zero threshold, equivalent to minimum share difficulty 1/16384.
-#define APP_STRATUM_MIN_CANDIDATE_TARGET_WORD0 0x0003ffffUL
+// Candidate gate for the hardware miner hot path. 0x0000ffff is a 16-bit
+// leading-zero threshold, equivalent to minimum share difficulty 1/65536.
+#define APP_STRATUM_MIN_CANDIDATE_TARGET_WORD0 0x0000ffffUL
 #endif
 #ifndef APP_STRATUM_ASM_CANDIDATE_LOOP
 #define APP_STRATUM_ASM_CANDIDATE_LOOP 1

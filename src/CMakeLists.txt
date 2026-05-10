@@ -104,6 +104,46 @@ idf_component_register(
         nvs_flash
 )
 
+set(STRATUM_MINER_INCLUDE_FILES
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_text_io.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_sha.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_protocol.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_json_hex.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_payout.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_target.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_hw_sha.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_selfcheck.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_parse.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_share_queue.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_engine.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_tasks.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_synthetic.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_session.inc"
+)
+set_property(SOURCE "stratum_miner.c" APPEND PROPERTY OBJECT_DEPENDS ${STRATUM_MINER_INCLUDE_FILES})
+
+set(DISPLAY_UI_INCLUDE_FILES
+    "${CMAKE_CURRENT_LIST_DIR}/display_ui_lcd_core.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/display_ui_panel.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/display_ui_render.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/display_ui_pages.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/display_ui_lcd_graph.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/display_ui_lcd_flush.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/display_ui_ssd1306_flush.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/display_ui_update.inc"
+)
+set_property(SOURCE "display_ui.c" APPEND PROPERTY OBJECT_DEPENDS ${DISPLAY_UI_INCLUDE_FILES})
+
+set(WEB_SERVER_INCLUDE_FILES
+    "${CMAKE_CURRENT_LIST_DIR}/web_server_render.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/web_server_form.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/web_server_format.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/web_server_pages.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/web_server_api.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/web_server_routes.inc"
+)
+set_property(SOURCE "web_server.c" APPEND PROPERTY OBJECT_DEPENDS ${WEB_SERVER_INCLUDE_FILES})
+
 set_source_files_properties("third_party/qrcode/qrcode.c" PROPERTIES COMPILE_DEFINITIONS LOCK_VERSION=3)
 
 option(APP_SYNTHETIC_NO_WIFI_NO_OLED "Build no-Wi-Fi/no-OLED synthetic miner benchmark firmware" OFF)
@@ -139,9 +179,19 @@ if(NOT "${APP_OLED_I2C_CLOCK_HZ}" STREQUAL "")
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_OLED_I2C_CLOCK_HZ=${APP_OLED_I2C_CLOCK_HZ})
 endif()
 
+set(APP_TASK_WDT_TIMEOUT_MS "" CACHE STRING "Task watchdog timeout in milliseconds")
+if(NOT "${APP_TASK_WDT_TIMEOUT_MS}" STREQUAL "")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_TASK_WDT_TIMEOUT_MS=${APP_TASK_WDT_TIMEOUT_MS})
+endif()
+
 set(APP_STRATUM_MINE_BATCH "" CACHE STRING "Runtime Stratum miner nonce batch size")
 if(NOT "${APP_STRATUM_MINE_BATCH}" STREQUAL "")
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_STRATUM_MINE_BATCH=${APP_STRATUM_MINE_BATCH})
+endif()
+
+set(APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES "" CACHE STRING "Runtime Stratum ASM miner nonce ownership guard")
+if(NOT "${APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES}" STREQUAL "")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES=${APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES})
 endif()
 
 set(APP_STRATUM_MINE_YIELD_BATCHES "" CACHE STRING "Runtime Stratum miner batches between task yields")

@@ -80,12 +80,10 @@ miner_scan_until_candidate_asm(
     const miner_work_t* work,
     uint32_t start_nonce,
     uint32_t candidate_raw_zero_mask) {
-  const uint32_t packed =
-      miner_scan_until_candidate_xtensa(work->hw_block0,
-                                        work->hw_block1,
-                                        byteswap32(start_nonce),
-                                        candidate_raw_zero_mask);
-  return packed & 0x7fffffffUL;
+  return miner_scan_until_candidate_xtensa(work->hw_block0,
+                                           work->hw_block1,
+                                           byteswap32(start_nonce),
+                                           candidate_raw_zero_mask);
 }
 #endif
 

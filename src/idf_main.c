@@ -156,6 +156,7 @@ static void load_settings(void) {
   memset(&g_system, 0, sizeof(g_system));
   g_display.screensaver = 1;
   g_display.text_outline = 1;
+  g_system.performance_mode = 1;
   g_system.block_alerts = 1;
 #if APP_DISPLAY_IDEASPARK_ESP32_19_LCD
   g_display.brightness_pct = 50;

@@ -375,14 +375,13 @@ static miner_scan_result_t IRAM_ATTR miner_scan_batch(const miner_work_t* work, 
   uint32_t* reg = (uint32_t*)SHA_TEXT_BASE;
   uint32_t* apb = (uint32_t*)0x3ff40078UL;
   const uint32_t t0 = work->target_word0;
-  const uint32_t candidate_t0 = miner_candidate_target_word0(t0);
-  const uint32_t candidate_raw_zero_mask = miner_candidate_raw_zero_mask(candidate_t0);
 #if STRATUM_ASM_CANDIDATE_LOOP
-  if (UNLIKELY((candidate_raw_zero_mask & 0xffU) != 0xffU)) {
-    return miner_scan_hw_range_core(work, start_nonce, STRATUM_MINE_BATCH, true, NULL);
-  }
+  const uint32_t candidate_raw_zero_mask =
+      miner_candidate_raw_zero_mask(STRATUM_MIN_CANDIDATE_TARGET_WORD0);
 #endif
 #if !STRATUM_ASM_CANDIDATE_LOOP
+  const uint32_t candidate_t0 = miner_candidate_target_word0(t0);
+  const uint32_t candidate_raw_zero_mask = miner_candidate_raw_zero_mask(candidate_t0);
   uint32_t* cmd = (uint32_t*)SHA_256_START_REG;
   const uint32_t cmd_one = 1;
   const uint32_t b00 = work->hw_block0[0];
@@ -519,7 +518,7 @@ static miner_scan_result_t IRAM_ATTR miner_scan_batch(const miner_work_t* work, 
       i += scanned_hashes;
       const uint32_t candidate_nonce = start_nonce + i - 1U;
       const uint32_t compare_word0 = byteswap32(SHA_TEXT_READ(reg, apb, 28));
-      if (compare_word0 > candidate_t0) {
+      if (compare_word0 > t0) {
         continue;
       }
       const miner_candidate_result_t candidate_result =

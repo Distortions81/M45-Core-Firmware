@@ -8,8 +8,7 @@
  *     uint32_t raw_zero_mask);
  *
  * Return value:
- *   bits 0..30: hashes scanned
- *   bit 31:     set when the last scanned hash meets raw_zero_mask
+ *   hashes scanned; the last scanned hash meets raw_zero_mask
  */
 
   .section .iram1, "ax"
@@ -43,8 +42,6 @@
 .Lclear_swapped_byte3:
   .word 0xffffff00
 .Lsha_pad:
-  .word 0x80000000
-.Lfound_bit:
   .word 0x80000000
 
   .align 4
@@ -189,11 +186,7 @@ miner_scan_until_candidate_xtensa:
   bnez.n  a11, .Lscan_next
   DPORT_SEQUENCE_READ8 a11, a6, 29
   and     a11, a11, a14
-  beqz.n  a11, .Ldone_found
+  bnez.n  a11, .Lscan_next
 
-  j       .Lscan_next
-
-.Ldone_found:
-  l32r    a11, .Lfound_bit
-  or      a2, a10, a11
+  mov.n   a2, a10
   retw.n
