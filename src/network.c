@@ -16,6 +16,10 @@
 #include "lwip/inet.h"
 #include "lwip/sockets.h"
 
+#define NETWORK_HELPER_TASK_CORE_ID 0
+#define DNS_TASK_PRIORITY 4
+#define WIFI_RECONNECT_TASK_PRIORITY 4
+
 static const char* TAG = "network";
 static bool g_sta_connect_done = false;
 static bool g_wifi_station_started = false;
@@ -334,7 +338,19 @@ void start_wifi(void) {
 void start_network_tasks(void) {
   APP_SERIAL_LOGF("network: starting network tasks\n");
   if (g_softap_enabled) {
-    xTaskCreate(dns_task, "dns", 3072, NULL, 4, NULL);
+    xTaskCreatePinnedToCore(dns_task,
+                            "dns",
+                            3072,
+                            NULL,
+                            DNS_TASK_PRIORITY,
+                            NULL,
+                            NETWORK_HELPER_TASK_CORE_ID);
   }
-  xTaskCreate(wifi_reconnect_task, "wifi_reconnect", 2048, NULL, 4, NULL);
+  xTaskCreatePinnedToCore(wifi_reconnect_task,
+                          "wifi_reconnect",
+                          2048,
+                          NULL,
+                          WIFI_RECONNECT_TASK_PRIORITY,
+                          NULL,
+                          NETWORK_HELPER_TASK_CORE_ID);
 }

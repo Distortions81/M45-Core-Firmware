@@ -28,7 +28,11 @@
 #define NETWORK_SCAN_MAX_APS 20
 #define NETWORK_SCAN_CACHE_LINE_MAX 64
 #define NETWORK_SCAN_TASK_STACK_BYTES 6144
+#define NETWORK_SCAN_TASK_PRIORITY (tskIDLE_PRIORITY + 2)
+#define NETWORK_SCAN_TASK_CORE_ID 0
 #define HTTP_SERVER_STACK_BYTES 8192
+#define HTTP_SERVER_TASK_PRIORITY (tskIDLE_PRIORITY + 3)
+#define HTTP_SERVER_TASK_CORE_ID 0
 #define HTTP_SERVER_MAX_OPEN_SOCKETS 8
 #define HTTP_SERVER_BACKLOG_CONNECTIONS 8
 #define HTTP_SERVER_SOCKET_TIMEOUT_SECONDS 2
@@ -52,6 +56,8 @@ typedef struct {
 } hashrate_average_sample_t;
 static hashrate_average_sample_t g_hashrate_average_samples[HASHRATE_AVERAGE_MAX_SAMPLES];
 static size_t g_hashrate_average_count = 0;
+static uint64_t g_hashrate_average_connected_at_us = 0;
+static bool g_hashrate_average_waiting_for_first_delta = true;
 static portMUX_TYPE g_hashrate_average_mux = portMUX_INITIALIZER_UNLOCKED;
 
 static esp_err_t stats_page_handler(httpd_req_t* req);

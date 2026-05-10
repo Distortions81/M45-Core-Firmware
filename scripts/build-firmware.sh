@@ -137,6 +137,7 @@ if build_cache_uses_different_idf "${build_dir}"; then
   log "cleaning ${build_dir}; cached ESP-IDF path differs from ${IDF_PATH}"
   rm -rf "${ROOT_DIR:?}/${build_dir}"
 fi
+enforce_sdkconfig_policy
 
 idf_args=(-B "${build_dir}")
 if [[ "${synthetic}" == "true" ]]; then

@@ -81,13 +81,16 @@
 #ifndef APP_TASK_WDT_TIMEOUT_MS
 #define APP_TASK_WDT_TIMEOUT_MS 30000
 #endif
+#ifndef APP_TASK_WDT_IDLE_CORE_MASK
+#define APP_TASK_WDT_IDLE_CORE_MASK (1U << 0)
+#endif
 #ifndef APP_STRATUM_MINE_BATCH
 // Keep batches below the hashrate sample window. Very large batches make
 // hashes_total update in coarse jumps, which can under-report OLED/web hashrate.
 #define APP_STRATUM_MINE_BATCH 262144
 #endif
 #ifndef APP_STRATUM_MINE_YIELD_BATCHES
-#define APP_STRATUM_MINE_YIELD_BATCHES 8
+#define APP_STRATUM_MINE_YIELD_BATCHES 0
 #endif
 #ifndef APP_STRATUM_MINE_CANDIDATE_GUARD_NONCES
 // Extra nonce ownership for the unbounded hardware ASM candidate loop. This is
@@ -117,7 +120,7 @@
 #define STRATUM_ASM_CANDIDATE_LOOP APP_STRATUM_ASM_CANDIDATE_LOOP
 #define STRATUM_MINER_TASK_COUNT 1
 #define STRATUM_MINER_TASK_STACK_BYTES 4096
-#define STRATUM_MINER_TASK_PRIORITY 1
+#define STRATUM_MINER_TASK_PRIORITY 2
 #define STRATUM_SOFTWARE_MINER_TASK_STACK_BYTES 4096
 #define STRATUM_SOFTWARE_MINER_TASK_PRIORITY 0
 #define STRATUM_SESSION_POLL_MS 100

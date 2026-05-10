@@ -5,6 +5,8 @@ Top-level shell scripts are user-facing commands:
 - `setup-esp-idf.sh`: install or prepare the ESP-IDF toolchain.
 - `check-environment.sh`: verify the ESP-IDF environment and project helper tools.
 - `build-firmware.sh`, `flash-firmware.sh`: build and flash firmware.
+  These commands normalize generated `sdkconfig` scheduling settings before
+  invoking ESP-IDF so network/system tasks stay off the miner core.
 - `monitor-serial.sh`: open the ESP-IDF serial monitor.
 - `show-firmware-size.sh`: print ESP-IDF and human-readable firmware size summaries.
 - `clean-builds.sh`: remove generated build directories.

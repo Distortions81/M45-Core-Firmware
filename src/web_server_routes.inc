@@ -31,6 +31,8 @@ void start_http_server(void) {
   APP_SERIAL_LOGF("web: starting http server\n");
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.uri_match_fn = httpd_uri_match_wildcard;
+  config.task_priority = HTTP_SERVER_TASK_PRIORITY;
+  config.core_id = HTTP_SERVER_TASK_CORE_ID;
   // Do not trim these casually. Mobile browsers and chunked settings pages
   // need the handler/socket headroom more than we need the small RAM savings.
   config.max_uri_handlers = 40;

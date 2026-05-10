@@ -595,7 +595,7 @@ static void configure_task_watchdog(void) {
 #endif
   const esp_task_wdt_config_t config = {
       .timeout_ms = APP_TASK_WDT_TIMEOUT_MS,
-      .idle_core_mask = (1U << 0) | (1U << 1),
+      .idle_core_mask = APP_TASK_WDT_IDLE_CORE_MASK,
       .trigger_panic = trigger_panic,
   };
   esp_err_t result = esp_task_wdt_reconfigure(&config);

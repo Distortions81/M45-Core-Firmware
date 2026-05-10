@@ -181,23 +181,65 @@ static void hashrate_average_drop_oldest_locked(void) {
   --g_hashrate_average_count;
 }
 
+static void hashrate_average_clear_locked(void) {
+  g_hashrate_average_count = 0;
+  g_hashrate_average_waiting_for_first_delta = true;
+}
+
+static bool hashrate_average_live_rate_ready(uint32_t hashes_per_second) {
+  return hashes_per_second > 0 &&
+         hashes_per_second != g_stratum.benchmark_hashes_per_second;
+}
+
+static void hashrate_average_seed_locked(
+    int64_t now, uint64_t hashes_total, bool wait_for_first_delta) {
+  g_hashrate_average_samples[0] = (hashrate_average_sample_t){
+      .time_us = now,
+      .hashes_total = hashes_total,
+  };
+  g_hashrate_average_count = 1;
+  g_hashrate_average_waiting_for_first_delta = wait_for_first_delta;
+}
+
 static void format_hashrate_average_text(char* out, size_t out_size) {
   const int64_t now = esp_timer_get_time();
+  const bool connected = g_stratum_runtime.connected;
+  const uint64_t connected_at_us = g_stratum_runtime.connected_at_us;
+  const uint32_t hashes_per_second = g_stratum_runtime.hashes_per_second;
   const uint64_t hashes_total = g_stratum_runtime.hashes_total;
   uint64_t elapsed_us = 0;
   uint64_t hash_delta = 0;
 
   portENTER_CRITICAL(&g_hashrate_average_mux);
+  if (!connected || connected_at_us == 0) {
+    hashrate_average_clear_locked();
+    g_hashrate_average_connected_at_us = 0;
+    portEXIT_CRITICAL(&g_hashrate_average_mux);
+    copy_str(out, out_size, "Average: gathering");
+    return;
+  }
+  if (g_hashrate_average_connected_at_us != connected_at_us) {
+    hashrate_average_clear_locked();
+    g_hashrate_average_connected_at_us = connected_at_us;
+  }
   if (g_hashrate_average_count > 0 &&
       hashes_total < g_hashrate_average_samples[g_hashrate_average_count - 1U].hashes_total) {
-    g_hashrate_average_count = 0;
+    hashrate_average_clear_locked();
   }
   if (g_hashrate_average_count == 0) {
-    g_hashrate_average_samples[0] = (hashrate_average_sample_t){
-        .time_us = now,
-        .hashes_total = hashes_total,
-    };
-    g_hashrate_average_count = 1;
+    hashrate_average_seed_locked(now,
+                                 hashes_total,
+                                 hashes_total == 0 ||
+                                     !hashrate_average_live_rate_ready(hashes_per_second));
+  } else if (g_hashrate_average_waiting_for_first_delta) {
+    if (hashes_total > g_hashrate_average_samples[0].hashes_total) {
+      hashrate_average_seed_locked(now, hashes_total, false);
+    } else {
+      g_hashrate_average_samples[0] = (hashrate_average_sample_t){
+          .time_us = now,
+          .hashes_total = hashes_total,
+      };
+    }
   } else {
     hashrate_average_sample_t* last =
         &g_hashrate_average_samples[g_hashrate_average_count - 1U];

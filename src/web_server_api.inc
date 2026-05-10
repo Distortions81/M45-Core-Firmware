@@ -388,12 +388,13 @@ static bool start_network_scan_task(void) {
   g_network_scan_in_progress = true;
   portEXIT_CRITICAL(&g_network_scan_mux);
 
-  const BaseType_t created = xTaskCreate(network_scan_task,
-                                         "wifi_scan",
-                                         NETWORK_SCAN_TASK_STACK_BYTES,
-                                         NULL,
-                                         tskIDLE_PRIORITY + 2,
-                                         NULL);
+  const BaseType_t created = xTaskCreatePinnedToCore(network_scan_task,
+                                                     "wifi_scan",
+                                                     NETWORK_SCAN_TASK_STACK_BYTES,
+                                                     NULL,
+                                                     NETWORK_SCAN_TASK_PRIORITY,
+                                                     NULL,
+                                                     NETWORK_SCAN_TASK_CORE_ID);
   if (created != pdPASS) {
     network_scan_task_finish();
     ESP_LOGW(TAG, "Failed to start Wi-Fi scan task");

@@ -45,6 +45,19 @@ build_cache_uses_different_idf() {
   return 1
 }
 
+enforce_sdkconfig_policy() {
+  local sdkconfig="${ROOT_DIR}/sdkconfig"
+  if [[ ! -f "${sdkconfig}" ]]; then
+    return 0
+  fi
+
+  local output
+  output="$("${PYTHON_BIN}" "${ROOT_DIR}/scripts/tools/enforce_sdkconfig_policy.py" "${sdkconfig}")"
+  if [[ -n "${output}" ]]; then
+    log "${output}"
+  fi
+}
+
 reject_packaged_idf_path() {
   local idf_path="$1"
   case "${idf_path}" in
