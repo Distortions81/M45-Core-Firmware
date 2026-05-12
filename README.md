@@ -10,6 +10,8 @@ M45 Core Firmware is ESP-IDF firmware for classic ESP32 boards that run a
 plain-TCP Stratum SHA-256 miner, local web setup UI, and either a small OLED or
 ideaspark LCD status display.
 
+Currently, on target hardware this averages about 620 Kh/s
+
 [Open the browser firmware flasher](https://distortions81.github.io/M45-Core-Firmware/)
 or read [flashing details](docs/FLASHING.md).
 
