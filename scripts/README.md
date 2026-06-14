@@ -55,12 +55,15 @@ off the miner hot path.
   and fail if any request errors.
 - `benchmark-hashrate.sh`: collect `/api/stats` samples and print a
   conservative advertised hashrate candidate.
+- `tools/stratum-audit-server.py`: run an independently-verifying local Stratum
+  server and infer real hashrate from valid submitted shares.
 
 Examples:
 
 ```sh
 ./scripts/benchmark-web.sh http://192.168.1.42
 ./scripts/benchmark-hashrate.sh --samples hashrate.csv http://192.168.1.42
+python3 scripts/tools/stratum-audit-server.py --device-url http://192.168.1.42
 ```
 
 ## Internal Helpers
