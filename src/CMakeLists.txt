@@ -89,6 +89,8 @@ set(APP_COMPONENT_SRCS
 )
 if(IDF_TARGET STREQUAL "esp32")
     list(APPEND APP_COMPONENT_SRCS "miner_candidate_loop_xtensa.S")
+elseif(IDF_TARGET STREQUAL "esp32s3")
+    list(APPEND APP_COMPONENT_SRCS "miner_candidate_loop_s3_xtensa.S")
 endif()
 
 idf_component_register(
@@ -200,6 +202,11 @@ if(NOT "${APP_STRATUM_MINE_YIELD_BATCHES}" STREQUAL "")
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_STRATUM_MINE_YIELD_BATCHES=${APP_STRATUM_MINE_YIELD_BATCHES})
 endif()
 
+set(APP_STRATUM_ASM_CANDIDATE_LOOP "" CACHE STRING "Enable runtime miner assembly candidate scan loop")
+if(NOT "${APP_STRATUM_ASM_CANDIDATE_LOOP}" STREQUAL "")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_STRATUM_ASM_CANDIDATE_LOOP=${APP_STRATUM_ASM_CANDIDATE_LOOP})
+endif()
+
 set(APP_S3_HARDWARE_SHA_MINER "" CACHE STRING "Enable ESP32-S3 hardware SHA miner")
 if(NOT "${APP_S3_HARDWARE_SHA_MINER}" STREQUAL "")
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_S3_HARDWARE_SHA_MINER=${APP_S3_HARDWARE_SHA_MINER})
@@ -208,6 +215,11 @@ endif()
 set(APP_STRATUM_SOFTWARE_MINER_ENABLED "" CACHE STRING "Enable runtime software SHA miner")
 if(NOT "${APP_STRATUM_SOFTWARE_MINER_ENABLED}" STREQUAL "")
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_STRATUM_SOFTWARE_MINER_ENABLED=${APP_STRATUM_SOFTWARE_MINER_ENABLED})
+endif()
+
+set(APP_STRATUM_SOFTWARE_STALE_WORK_CHECK_NONCES "" CACHE STRING "Runtime software miner stale-work check interval in nonces")
+if(NOT "${APP_STRATUM_SOFTWARE_STALE_WORK_CHECK_NONCES}" STREQUAL "")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_STRATUM_SOFTWARE_STALE_WORK_CHECK_NONCES=${APP_STRATUM_SOFTWARE_STALE_WORK_CHECK_NONCES})
 endif()
 
 set(APP_STRATUM_SHARE_QUEUE_MAX "" CACHE STRING "Runtime Stratum found-share queue capacity")

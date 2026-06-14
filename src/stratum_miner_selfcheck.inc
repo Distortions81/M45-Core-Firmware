@@ -194,6 +194,18 @@ void stratum_self_check(void) {
     ESP_LOGE(TAG, "pipelined hardware sha256d self-check failed");
     abort();
   }
+#if STRATUM_ASM_CANDIDATE_LOOP
+  miner_hardware_acquire();
+  const bool asm_self_check_ok = s3_miner_scan_asm_self_check(job.header_midstate,
+                                                             job.header_tail_words,
+                                                             nonce,
+                                                             software_state);
+  miner_hardware_release();
+  if (!asm_self_check_ok) {
+    ESP_LOGE(TAG, "assembly hardware sha256d self-check failed");
+    abort();
+  }
+#endif
 #endif
 }
 

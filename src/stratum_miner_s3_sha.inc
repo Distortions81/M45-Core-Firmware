@@ -10,6 +10,18 @@
     value; \
   })
 
+#if STRATUM_ASM_CANDIDATE_LOOP
+#define MINER_S3_ASM_CANDIDATE_FOUND_FLAG 0x80000000UL
+#define MINER_S3_ASM_HASH_COUNT_MASK 0x7fffffffUL
+
+extern uint32_t s3_miner_scan_until_candidate_xtensa(
+    const uint32_t* midstate_s3,
+    const uint32_t* tail_s3,
+    uint32_t nonce,
+    uint32_t candidate_word0,
+    uint32_t max_hashes);
+#endif
+
 static inline __attribute__((always_inline)) void IRAM_ATTR s3_hw_sha_wait_idle(void) {
   uint32_t* cmd = (uint32_t*)SHA_START_REG;
   while (S3_SHA_READ(cmd, 8) != 0) {
@@ -199,6 +211,13 @@ static miner_scan_result_t IRAM_ATTR s3_miner_scan_hw_range(
   const uint32_t tail0 = byteswap32(work->tail_words[0]);
   const uint32_t tail1 = byteswap32(work->tail_words[1]);
   const uint32_t tail2 = byteswap32(work->tail_words[2]);
+#if STRATUM_ASM_CANDIDATE_LOOP
+  const uint32_t midstate_s3[8] __attribute__((aligned(16))) = {
+      midstate0, midstate1, midstate2, midstate3,
+      midstate4, midstate5, midstate6, midstate7,
+  };
+  const uint32_t tail_s3[3] __attribute__((aligned(16))) = {tail0, tail1, tail2};
+#endif
   miner_scan_result_t result = {0};
   const uint32_t candidate_t0 =
       enqueue_shares ? miner_candidate_target_word0(work->target_word0) : work->target_word0;
@@ -259,54 +278,90 @@ static miner_scan_result_t IRAM_ATTR s3_miner_scan_hw_range(
       scan_end = stale_check_end;
     }
 
-    S3_SHA_WRITE_TAIL_BLOCK(start_nonce + i);
-    for (; i < scan_end;) {
-      const uint32_t nonce = start_nonce + i++;
-      S3_SHA_WRITE_MIDSTATE();
-      S3_SHA_MEMW();
-      S3_SHA_STORE(cmd, 4, 1);
-
-      // The first block is latched on CONTINUE. Fill the fixed portion of the
-      // second block while its digest is being calculated.
-      S3_SHA_STORE(text, 32, 0x00000080UL);
-      S3_SHA_STORE(text, 60, 0x00010000UL);
-      s3_hw_sha_wait_first_block();
-
-      S3_SHA_WRITE_SECOND_HASH_BLOCK();
-      S3_SHA_MEMW();
-      S3_SHA_STORE(cmd, 0, 1);
-
-      // The SHA engine latches text on START, so prepare the next nonce while
-      // the second hash is running.
-      S3_SHA_WRITE_TAIL_BLOCK(start_nonce + i);
-      s3_hw_sha_wait_idle();
-      const uint32_t target_word0 = S3_SHA_READ(h, 28);
-      if (LIKELY(target_word0 > candidate_t0)) {
-        continue;
-      }
-      if (!enqueue_shares) {
-        ++result.candidates;
-        if (checksum != NULL) {
-          *checksum ^= nonce ^ target_word0;
+#if STRATUM_ASM_CANDIDATE_LOOP
+    if (enqueue_shares) {
+      while (i < scan_end && !result.queue_full && !result.stale_work) {
+        const uint32_t scan_result =
+            s3_miner_scan_until_candidate_xtensa(midstate_s3,
+                                                 tail_s3,
+                                                 start_nonce + i,
+                                                 candidate_t0,
+                                                 scan_end - i);
+        const uint32_t scanned = scan_result & MINER_S3_ASM_HASH_COUNT_MASK;
+        i += scanned;
+        if ((scan_result & MINER_S3_ASM_CANDIDATE_FOUND_FLAG) == 0) {
+          continue;
         }
-        continue;
-      }
-      if (!s3_hw_hash_meets_target(work, target_word0)) {
-        continue;
-      }
 
-      const miner_candidate_result_t candidate_result =
-          s3_miner_push_hardware_candidate(work, nonce);
-      if (candidate_result != MINER_CANDIDATE_NONE) {
-        ++result.candidates;
+        const uint32_t nonce = start_nonce + i - 1U;
+        const uint32_t target_word0 = S3_SHA_READ(h, 28);
+        if (!s3_hw_hash_meets_target(work, target_word0)) {
+          continue;
+        }
+
+        const miner_candidate_result_t candidate_result =
+            s3_miner_push_hardware_candidate(work, nonce);
+        if (candidate_result != MINER_CANDIDATE_NONE) {
+          ++result.candidates;
+        }
+        if (candidate_result == MINER_CANDIDATE_QUEUE_FULL) {
+          result.queue_full = true;
+        } else if (candidate_result == MINER_CANDIDATE_STALE) {
+          result.stale_work = true;
+        }
       }
-      if (candidate_result == MINER_CANDIDATE_QUEUE_FULL) {
-        result.queue_full = true;
-      } else if (candidate_result == MINER_CANDIDATE_STALE) {
-        result.stale_work = true;
-      }
-      if (result.queue_full || result.stale_work) {
-        break;
+    } else
+#endif
+    {
+      S3_SHA_WRITE_TAIL_BLOCK(start_nonce + i);
+      for (; i < scan_end;) {
+        const uint32_t nonce = start_nonce + i++;
+        S3_SHA_WRITE_MIDSTATE();
+        S3_SHA_MEMW();
+        S3_SHA_STORE(cmd, 4, 1);
+
+        // The first block is latched on CONTINUE. Fill the fixed portion of the
+        // second block while its digest is being calculated.
+        S3_SHA_STORE(text, 32, 0x00000080UL);
+        S3_SHA_STORE(text, 60, 0x00010000UL);
+        s3_hw_sha_wait_first_block();
+
+        S3_SHA_WRITE_SECOND_HASH_BLOCK();
+        S3_SHA_MEMW();
+        S3_SHA_STORE(cmd, 0, 1);
+
+        // The SHA engine latches text on START, so prepare the next nonce while
+        // the second hash is running.
+        S3_SHA_WRITE_TAIL_BLOCK(start_nonce + i);
+        s3_hw_sha_wait_idle();
+        const uint32_t target_word0 = S3_SHA_READ(h, 28);
+        if (LIKELY(target_word0 > candidate_t0)) {
+          continue;
+        }
+        if (!enqueue_shares) {
+          ++result.candidates;
+          if (checksum != NULL) {
+            *checksum ^= nonce ^ target_word0;
+          }
+          continue;
+        }
+        if (!s3_hw_hash_meets_target(work, target_word0)) {
+          continue;
+        }
+
+        const miner_candidate_result_t candidate_result =
+            s3_miner_push_hardware_candidate(work, nonce);
+        if (candidate_result != MINER_CANDIDATE_NONE) {
+          ++result.candidates;
+        }
+        if (candidate_result == MINER_CANDIDATE_QUEUE_FULL) {
+          result.queue_full = true;
+        } else if (candidate_result == MINER_CANDIDATE_STALE) {
+          result.stale_work = true;
+        }
+        if (result.queue_full || result.stale_work) {
+          break;
+        }
       }
     }
 
@@ -347,6 +402,40 @@ static miner_scan_result_t IRAM_ATTR miner_scan_hw_benchmark_range(
     uint32_t* checksum) {
   return s3_miner_scan_hw_range(work, start_nonce, nonce_count, false, checksum);
 }
+
+#if STRATUM_ASM_CANDIDATE_LOOP
+static bool IRAM_ATTR s3_miner_scan_asm_self_check(
+    const uint32_t midstate[8],
+    const uint32_t tail_words[3],
+    uint32_t nonce,
+    const uint32_t expected_state[8]) {
+  uint32_t* h = (uint32_t*)SHA_H_BASE;
+  const uint32_t midstate_s3[8] __attribute__((aligned(16))) = {
+      byteswap32(midstate[0]), byteswap32(midstate[1]),
+      byteswap32(midstate[2]), byteswap32(midstate[3]),
+      byteswap32(midstate[4]), byteswap32(midstate[5]),
+      byteswap32(midstate[6]), byteswap32(midstate[7]),
+  };
+  const uint32_t tail_s3[3] __attribute__((aligned(16))) = {
+      byteswap32(tail_words[0]),
+      byteswap32(tail_words[1]),
+      byteswap32(tail_words[2]),
+  };
+  const uint32_t result =
+      s3_miner_scan_until_candidate_xtensa(midstate_s3, tail_s3, nonce, UINT32_MAX, 1);
+  if (result != (MINER_S3_ASM_CANDIDATE_FOUND_FLAG | 1U)) {
+    return false;
+  }
+  return byteswap32(S3_SHA_READ(h, 0)) == expected_state[0] &&
+         byteswap32(S3_SHA_READ(h, 4)) == expected_state[1] &&
+         byteswap32(S3_SHA_READ(h, 8)) == expected_state[2] &&
+         byteswap32(S3_SHA_READ(h, 12)) == expected_state[3] &&
+         byteswap32(S3_SHA_READ(h, 16)) == expected_state[4] &&
+         byteswap32(S3_SHA_READ(h, 20)) == expected_state[5] &&
+         byteswap32(S3_SHA_READ(h, 24)) == expected_state[6] &&
+         byteswap32(S3_SHA_READ(h, 28)) == expected_state[7];
+}
+#endif
 
 #undef S3_SHA_READ
 #undef S3_SHA_STORE
