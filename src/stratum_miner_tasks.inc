@@ -6,9 +6,13 @@ static void miner_wake_tasks(void) {
       xTaskNotifyGive(g_miner_task_handles[i]);
     }
   }
-  if (g_software_miner_task_handle != NULL) {
-    xTaskNotifyGive(g_software_miner_task_handle);
+#if STRATUM_SOFTWARE_MINER_ENABLED
+  for (uint8_t i = 0; i < STRATUM_SOFTWARE_MINER_TASK_COUNT; ++i) {
+    if (g_software_miner_task_handles[i] != NULL) {
+      xTaskNotifyGive(g_software_miner_task_handles[i]);
+    }
   }
+#endif
 }
 
 #if APP_HARDWARE_SHA_MINER
@@ -34,9 +38,9 @@ static void miner_worker_task(void* arg) {
       continue;
     }
 
-    esp_sha_lock_engine(SHA2_256);
+    miner_hardware_acquire();
     const miner_scan_result_t result = miner_scan_batch(&work, start_nonce);
-    esp_sha_unlock_engine(SHA2_256);
+    miner_hardware_release();
     if (result.hashes < claimed_nonce_count) {
       miner_return_unscanned(&work,
                              start_nonce + result.hashes,
@@ -76,6 +80,7 @@ static void miner_worker_task(void* arg) {
 }
 #endif
 
+#if STRATUM_SOFTWARE_MINER_ENABLED
 static void software_miner_worker_task(void* arg) {
   (void)arg;
   while (true) {
@@ -97,7 +102,9 @@ static void software_miner_worker_task(void* arg) {
     if (result.queue_full && g_stratum_session_task_handle != NULL) {
       xTaskNotifyGive(g_stratum_session_task_handle);
     }
-
+#if APP_CLASSIC_HARDWARE_SHA_MINER
     vTaskDelay(1);
+#endif
   }
 }
+#endif

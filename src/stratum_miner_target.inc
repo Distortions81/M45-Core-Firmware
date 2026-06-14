@@ -302,6 +302,7 @@ static uint32_t difficulty_from_hash_be(const uint8_t hash_be[32]) {
   return quotient;
 }
 
+#if STRATUM_SOFTWARE_MINER_ENABLED
 static uint32_t miner_share_difficulty(
     const miner_work_t* work, uint32_t nonce, uint8_t hash_be[32]) {
   uint32_t second_state[8];
@@ -309,6 +310,7 @@ static uint32_t miner_share_difficulty(
   miner_hash_words_to_be(second_state, hash_be);
   return difficulty_from_hash_be(hash_be);
 }
+#endif
 
 static bool miner_hash_meets_block_target(const miner_work_t* work, const uint8_t hash_be[32]) {
   return target_is_nonzero(work->block_target) &&

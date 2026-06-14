@@ -46,7 +46,7 @@ static void miner_publish_current_job(bool preserve_nonce) {
   if (ready) {
     memcpy(g_miner_work.midstate, g_mining_job.header_midstate, sizeof(g_miner_work.midstate));
     memcpy(g_miner_work.tail_words, g_mining_job.header_tail_words, sizeof(g_miner_work.tail_words));
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
     synthetic_hw_prepare_blocks(g_miner_work.hw_block0, g_miner_work.hw_block1, g_mining_job.header);
 #endif
     memcpy(g_miner_work.target_words, g_mining_job.share_target_words, sizeof(g_miner_work.target_words));
@@ -88,7 +88,7 @@ static bool miner_claim_batch(
     miner_work_t* out,
     uint32_t* start_nonce,
     uint32_t* claimed_nonce_count) {
-  *claimed_nonce_count = STRATUM_MINE_BATCH;
+  *claimed_nonce_count = STRATUM_HARDWARE_MINE_BATCH;
   return miner_claim_range(out, start_nonce, *claimed_nonce_count);
 }
 #endif
@@ -121,7 +121,7 @@ static void miner_advance_overrun_claim(
 }
 #endif
 
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 static inline __attribute__((always_inline)) miner_scan_result_t IRAM_ATTR miner_scan_hw_range_core(
     const miner_work_t* work,
     uint32_t start_nonce,
@@ -417,7 +417,7 @@ static miner_scan_result_t IRAM_ATTR miner_scan_batch(const miner_work_t* work, 
   const uint32_t b11 = work->hw_block1[1];
   const uint32_t b12 = work->hw_block1[2];
 #endif
-  const uint32_t nonce_count = STRATUM_MINE_BATCH;
+  const uint32_t nonce_count = STRATUM_HARDWARE_MINE_BATCH;
   miner_scan_result_t result = {0};
   uint32_t i = 0;
   uint32_t published_hashes = 0;
@@ -638,6 +638,7 @@ static miner_scan_result_t IRAM_ATTR miner_scan_hw_benchmark_range(
 }
 #endif
 
+#if STRATUM_SOFTWARE_MINER_ENABLED
 static miner_scan_result_t IRAM_ATTR miner_scan_software_range(
     const miner_work_t* work,
     uint32_t start_nonce,
@@ -749,3 +750,4 @@ static miner_scan_result_t IRAM_ATTR miner_scan_software_range(
   result.stale_work = stale_work;
   return result;
 }
+#endif

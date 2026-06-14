@@ -28,19 +28,23 @@ static void stratum_ensure_miner_tasks(void) {
 #endif
 
 #if STRATUM_SOFTWARE_MINER_ENABLED
-  if (g_software_miner_task_handle == NULL) {
-    g_software_miner_task_context.index = STRATUM_MINER_TASK_COUNT;
-    const BaseType_t core_id = 0;
+  for (uint8_t i = 0; i < STRATUM_SOFTWARE_MINER_TASK_COUNT; ++i) {
+    if (g_software_miner_task_handles[i] != NULL) {
+      continue;
+    }
+    static const char* names[] = {"miner_sw0", "miner_sw1"};
+    g_software_miner_task_contexts[i].index = STRATUM_MINER_TASK_COUNT + i;
+    const BaseType_t core_id = i % portNUM_PROCESSORS;
     const BaseType_t created = xTaskCreatePinnedToCore(software_miner_worker_task,
-                                                       "miner_sw",
+                                                       names[i % 2],
                                                        STRATUM_SOFTWARE_MINER_TASK_STACK_BYTES,
-                                                       &g_software_miner_task_context,
+                                                       &g_software_miner_task_contexts[i],
                                                        STRATUM_SOFTWARE_MINER_TASK_PRIORITY,
-                                                       &g_software_miner_task_handle,
+                                                       &g_software_miner_task_handles[i],
                                                        core_id);
     if (created != pdPASS) {
-      g_software_miner_task_handle = NULL;
-      ESP_LOGE(TAG, "Could not create software miner task");
+      g_software_miner_task_handles[i] = NULL;
+      ESP_LOGE(TAG, "Could not create software miner task %u", (unsigned)i);
     }
   }
 #endif

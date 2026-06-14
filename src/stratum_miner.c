@@ -20,10 +20,14 @@
 #include "sdkconfig.h"
 #include "build_info.h"
 
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 #include "sha/sha_parallel_engine.h"
 #include "soc/dport_access.h"
 #include "soc/dport_reg.h"
+#include "soc/hwcrypto_reg.h"
+#elif APP_S3_HARDWARE_SHA_MINER
+#include "sha/sha_core.h"
+#include "soc/dport_access.h"
 #include "soc/hwcrypto_reg.h"
 #endif
 
@@ -125,7 +129,7 @@ typedef struct {
   uint64_t hashes_total;
 } stratum_hashrate_sample_t;
 
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 typedef struct {
   uint8_t index;
   miner_work_t work;
@@ -148,7 +152,7 @@ static share_queue_t g_share_queue = {
 static SemaphoreHandle_t g_share_queue_mutex = NULL;
 static portMUX_TYPE g_miner_work_mux = portMUX_INITIALIZER_UNLOCKED;
 static portMUX_TYPE g_miner_stats_mux = portMUX_INITIALIZER_UNLOCKED;
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 static portMUX_TYPE g_synthetic_stats_mux = portMUX_INITIALIZER_UNLOCKED;
 #endif
 static miner_work_t g_miner_work __attribute__((aligned(16))) = {0};
@@ -156,9 +160,11 @@ static TaskHandle_t g_miner_task_handles[STRATUM_MINER_TASK_COUNT] = {0};
 #if APP_HARDWARE_SHA_MINER
 static miner_task_context_t g_miner_task_contexts[STRATUM_MINER_TASK_COUNT] = {0};
 #endif
-static TaskHandle_t g_software_miner_task_handle = NULL;
-static miner_task_context_t g_software_miner_task_context = {0};
-#if APP_HARDWARE_SHA_MINER
+#if STRATUM_SOFTWARE_MINER_ENABLED
+static TaskHandle_t g_software_miner_task_handles[STRATUM_SOFTWARE_MINER_TASK_COUNT] = {0};
+static miner_task_context_t g_software_miner_task_contexts[STRATUM_SOFTWARE_MINER_TASK_COUNT] = {0};
+#endif
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 static TaskHandle_t g_synthetic_task_handles[STRATUM_MINER_TASK_COUNT] = {0};
 static synthetic_task_context_t g_synthetic_task_contexts[STRATUM_MINER_TASK_COUNT] = {0};
 #endif
@@ -169,7 +175,7 @@ static volatile bool g_stratum_primary_probe_in_progress = false;
 static int64_t g_stratum_last_primary_probe_us = 0;
 static stratum_hashrate_sample_t g_hashrate_samples[STRATUM_HASHRATE_MAX_SAMPLES];
 static size_t g_hashrate_sample_count = 0;
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 static uint32_t g_synthetic_hw_block0[16] = {0};
 static uint32_t g_synthetic_hw_block1[16] = {0};
 #endif
@@ -187,6 +193,25 @@ static const DRAM_ATTR uint32_t SHA256_INITIAL_STATE[8] = {
     0x6a09e667UL, 0xbb67ae85UL, 0x3c6ef372UL, 0xa54ff53aUL,
     0x510e527fUL, 0x9b05688cUL, 0x1f83d9abUL, 0x5be0cd19UL};
 
+#if APP_HARDWARE_SHA_MINER
+static inline void miner_hardware_acquire(void) {
+#if APP_CLASSIC_HARDWARE_SHA_MINER
+  esp_sha_lock_engine(SHA2_256);
+#else
+  esp_sha_acquire_hardware();
+  esp_sha_set_mode(SHA2_256);
+#endif
+}
+
+static inline void miner_hardware_release(void) {
+#if APP_CLASSIC_HARDWARE_SHA_MINER
+  esp_sha_unlock_engine(SHA2_256);
+#else
+  esp_sha_release_hardware();
+#endif
+}
+#endif
+
 
 /* Private implementation fragments share the static state above. */
 #include "stratum_miner_text_io.inc"
@@ -195,15 +220,18 @@ static const DRAM_ATTR uint32_t SHA256_INITIAL_STATE[8] = {
 #include "stratum_miner_json_hex.inc"
 #include "stratum_miner_payout.inc"
 #include "stratum_miner_target.inc"
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 #include "stratum_miner_hw_sha.inc"
 #endif
-#include "stratum_miner_selfcheck.inc"
 #include "stratum_miner_parse.inc"
 #include "stratum_miner_share_queue.inc"
 #include "stratum_miner_engine.inc"
+#if APP_S3_HARDWARE_SHA_MINER
+#include "stratum_miner_s3_sha.inc"
+#endif
 #include "stratum_miner_tasks.inc"
-#if APP_HARDWARE_SHA_MINER
+#include "stratum_miner_selfcheck.inc"
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 #include "stratum_miner_synthetic.inc"
 #endif
 #include "stratum_miner_session.inc"

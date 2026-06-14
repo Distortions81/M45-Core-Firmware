@@ -144,16 +144,54 @@ void stratum_self_check(void) {
       abort();
     }
   }
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
   uint32_t hw_block0[16];
   uint32_t hw_block1[16];
   uint32_t hardware_state[8];
   synthetic_hw_prepare_blocks(hw_block0, hw_block1, job.header);
-  esp_sha_lock_engine(SHA2_256);
+  miner_hardware_acquire();
   synthetic_hw_sha256d_second_state(hw_block0, hw_block1, nonce, hardware_state);
-  esp_sha_unlock_engine(SHA2_256);
+  miner_hardware_release();
   if (memcmp(software_state, hardware_state, sizeof(software_state)) != 0) {
     ESP_LOGE(TAG, "hardware sha256d self-check failed");
+    abort();
+  }
+#elif APP_S3_HARDWARE_SHA_MINER
+  uint32_t hardware_state[8];
+  miner_work_t pipeline_work = {0};
+  uint32_t pipeline_checksum = 0;
+  uint32_t expected_pipeline_checksum = 0;
+  memcpy(pipeline_work.midstate, job.header_midstate, sizeof(pipeline_work.midstate));
+  memcpy(pipeline_work.tail_words, job.header_tail_words, sizeof(pipeline_work.tail_words));
+  pipeline_work.target_word0 = UINT32_MAX;
+  miner_hardware_acquire();
+  const uint32_t hardware_target_word0 =
+      s3_hw_sha256d_target_word0(job.header_midstate, job.header_tail_words, nonce);
+  s3_hw_sha256d_second_state(job.header_midstate,
+                             job.header_tail_words,
+                             nonce,
+                             hardware_state);
+  const miner_scan_result_t pipeline_result =
+      s3_miner_scan_hw_range(&pipeline_work, nonce, 8, false, &pipeline_checksum);
+  miner_hardware_release();
+  if (hardware_target_word0 != miner_hash_target_word(software_state, 0)) {
+    ESP_LOGE(TAG, "hardware sha256d target word self-check failed");
+    abort();
+  }
+  if (memcmp(software_state, hardware_state, sizeof(software_state)) != 0) {
+    ESP_LOGE(TAG, "hardware sha256d self-check failed");
+    abort();
+  }
+  for (uint32_t i = 0; i < 8; ++i) {
+    uint32_t pipeline_state[8];
+    sha256d_midstate_second_state(
+        job.header_midstate, job.header_tail_words, nonce + i, pipeline_state);
+    expected_pipeline_checksum ^= nonce + i;
+    expected_pipeline_checksum ^= miner_hash_target_word(pipeline_state, 0);
+  }
+  if (pipeline_result.hashes != 8 || pipeline_result.candidates != 8 ||
+      pipeline_checksum != expected_pipeline_checksum) {
+    ESP_LOGE(TAG, "pipelined hardware sha256d self-check failed");
     abort();
   }
 #endif
@@ -172,11 +210,15 @@ uint32_t stratum_benchmark_hashrate_us(int64_t duration_us) {
 #if APP_HARDWARE_SHA_MINER
   miner_work_t work = {0};
   work.sequence = 1;
+  memcpy(work.midstate, job.header_midstate, sizeof(work.midstate));
+  memcpy(work.tail_words, job.header_tail_words, sizeof(work.tail_words));
   memcpy(work.target_words, job.share_target_words, sizeof(work.target_words));
   work.target_word0 = job.share_target_words[0];
+#if APP_CLASSIC_HARDWARE_SHA_MINER
   synthetic_hw_prepare_blocks(work.hw_block0, work.hw_block1, job.header);
+#endif
 
-  esp_sha_lock_engine(SHA2_256);
+  miner_hardware_acquire();
   const int64_t warmup_start = esp_timer_get_time();
   uint32_t warmup_nonce = 0;
   do {
@@ -192,7 +234,7 @@ uint32_t stratum_benchmark_hashrate_us(int64_t duration_us) {
     checksum ^= result.candidates;
     hashes += result.hashes;
   } while (esp_timer_get_time() - start < duration_us);
-  esp_sha_unlock_engine(SHA2_256);
+  miner_hardware_release();
 #else
   const int64_t start = esp_timer_get_time();
   do {

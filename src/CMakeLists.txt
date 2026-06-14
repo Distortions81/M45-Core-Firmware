@@ -117,6 +117,7 @@ set(STRATUM_MINER_INCLUDE_FILES
     "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_payout.inc"
     "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_target.inc"
     "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_hw_sha.inc"
+    "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_s3_sha.inc"
     "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_selfcheck.inc"
     "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_parse.inc"
     "${CMAKE_CURRENT_LIST_DIR}/stratum_miner_share_queue.inc"
@@ -197,6 +198,16 @@ endif()
 set(APP_STRATUM_MINE_YIELD_BATCHES "" CACHE STRING "Runtime Stratum miner batches between task yields")
 if(NOT "${APP_STRATUM_MINE_YIELD_BATCHES}" STREQUAL "")
     target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_STRATUM_MINE_YIELD_BATCHES=${APP_STRATUM_MINE_YIELD_BATCHES})
+endif()
+
+set(APP_S3_HARDWARE_SHA_MINER "" CACHE STRING "Enable ESP32-S3 hardware SHA miner")
+if(NOT "${APP_S3_HARDWARE_SHA_MINER}" STREQUAL "")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_S3_HARDWARE_SHA_MINER=${APP_S3_HARDWARE_SHA_MINER})
+endif()
+
+set(APP_STRATUM_SOFTWARE_MINER_ENABLED "" CACHE STRING "Enable runtime software SHA miner")
+if(NOT "${APP_STRATUM_SOFTWARE_MINER_ENABLED}" STREQUAL "")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_STRATUM_SOFTWARE_MINER_ENABLED=${APP_STRATUM_SOFTWARE_MINER_ENABLED})
 endif()
 
 set(APP_STRATUM_SHARE_QUEUE_MAX "" CACHE STRING "Runtime Stratum found-share queue capacity")

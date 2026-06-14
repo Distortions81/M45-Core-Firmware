@@ -40,9 +40,8 @@ static bool miner_work_sequence_is_current(const miner_work_t* work) {
 }
 
 static inline uint32_t share_queue_room_fast(void) {
-  // The miner task is the only producer; the session task only drains.
-  // This is only a fast "already full" check. Target hits are sparse, so free
-  // share slots must not cap the number of nonces scanned in a batch.
+  // Miner tasks produce and the session task drains. This is only a fast
+  // "already full" check; the mutex protects actual pushes.
   const size_t capacity = g_share_queue.capacity;
   const size_t count = g_share_queue.count;
   if (count >= capacity) {
@@ -68,7 +67,7 @@ static inline uint32_t IRAM_ATTR miner_candidate_raw_zero_mask(uint32_t target_w
   return byteswap32(target_order_mask);
 }
 
-#if APP_HARDWARE_SHA_MINER && STRATUM_ASM_CANDIDATE_LOOP
+#if APP_CLASSIC_HARDWARE_SHA_MINER && STRATUM_ASM_CANDIDATE_LOOP
 #define MINER_ASM_CANDIDATE_FOUND_FLAG 0x80000000UL
 #define MINER_ASM_HASH_COUNT_MASK 0x7fffffffUL
 
@@ -153,13 +152,15 @@ static share_queue_push_result_t share_queue_push_with_hash(
   return SHARE_QUEUE_PUSH_OK;
 }
 
+#if STRATUM_SOFTWARE_MINER_ENABLED
 static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint32_t nonce) {
   uint8_t hash_be[32];
   const uint32_t share_difficulty = miner_share_difficulty(work, nonce, hash_be);
   return share_queue_push_with_hash(work, nonce, hash_be, share_difficulty);
 }
+#endif
 
-#if APP_HARDWARE_SHA_MINER
+#if APP_CLASSIC_HARDWARE_SHA_MINER
 static bool miner_confirm_hardware_candidate(
     const miner_work_t* work, uint32_t nonce, uint8_t hash_be[32]);
 
@@ -249,6 +250,7 @@ static bool miner_confirm_hardware_candidate(
 }
 #endif
 
+#if STRATUM_SOFTWARE_MINER_ENABLED
 static miner_candidate_result_t miner_push_software_candidate(
     const miner_work_t* work,
     uint32_t nonce) {
@@ -261,6 +263,7 @@ static miner_candidate_result_t miner_push_software_candidate(
   }
   return MINER_CANDIDATE_PUSHED;
 }
+#endif
 
 static bool share_queue_pop(found_share_t* out) {
   if (!share_queue_ensure_mutex()) {
