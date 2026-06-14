@@ -68,7 +68,7 @@ static inline uint32_t IRAM_ATTR miner_candidate_raw_zero_mask(uint32_t target_w
   return byteswap32(target_order_mask);
 }
 
-#if STRATUM_ASM_CANDIDATE_LOOP
+#if APP_HARDWARE_SHA_MINER && STRATUM_ASM_CANDIDATE_LOOP
 #define MINER_ASM_CANDIDATE_FOUND_FLAG 0x80000000UL
 #define MINER_ASM_HASH_COUNT_MASK 0x7fffffffUL
 
@@ -159,6 +159,7 @@ static share_queue_push_result_t share_queue_push(const miner_work_t* work, uint
   return share_queue_push_with_hash(work, nonce, hash_be, share_difficulty);
 }
 
+#if APP_HARDWARE_SHA_MINER
 static bool miner_confirm_hardware_candidate(
     const miner_work_t* work, uint32_t nonce, uint8_t hash_be[32]);
 
@@ -246,6 +247,7 @@ static bool miner_confirm_hardware_candidate(
   miner_hash_words_to_be(hash_words, hash_be);
   return valid;
 }
+#endif
 
 static miner_candidate_result_t miner_push_software_candidate(
     const miner_work_t* work,

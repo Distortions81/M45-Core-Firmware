@@ -20,13 +20,12 @@
 #include "sdkconfig.h"
 #include "build_info.h"
 
-#if !CONFIG_IDF_TARGET_ESP32
-#error "Hardware SHA-256 mining is only implemented for classic ESP32"
-#endif
+#if APP_HARDWARE_SHA_MINER
 #include "sha/sha_parallel_engine.h"
 #include "soc/dport_access.h"
 #include "soc/dport_reg.h"
 #include "soc/hwcrypto_reg.h"
+#endif
 
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
@@ -109,11 +108,13 @@ typedef enum {
   MINER_CANDIDATE_STALE,
 } miner_candidate_result_t;
 
+#if APP_HARDWARE_SHA_MINER
 static miner_scan_result_t miner_scan_hw_benchmark_range(
     const miner_work_t* work,
     uint32_t start_nonce,
     uint32_t nonce_count,
     uint32_t* checksum);
+#endif
 
 typedef struct {
   uint8_t index;
@@ -124,6 +125,7 @@ typedef struct {
   uint64_t hashes_total;
 } stratum_hashrate_sample_t;
 
+#if APP_HARDWARE_SHA_MINER
 typedef struct {
   uint8_t index;
   miner_work_t work;
@@ -136,6 +138,7 @@ typedef struct {
   uint32_t candidates;
   uint32_t checksum;
 } synthetic_task_context_t;
+#endif
 
 static found_share_t g_share_queue_storage[STRATUM_SHARE_QUEUE_MAX];
 static share_queue_t g_share_queue = {
@@ -145,14 +148,20 @@ static share_queue_t g_share_queue = {
 static SemaphoreHandle_t g_share_queue_mutex = NULL;
 static portMUX_TYPE g_miner_work_mux = portMUX_INITIALIZER_UNLOCKED;
 static portMUX_TYPE g_miner_stats_mux = portMUX_INITIALIZER_UNLOCKED;
+#if APP_HARDWARE_SHA_MINER
 static portMUX_TYPE g_synthetic_stats_mux = portMUX_INITIALIZER_UNLOCKED;
+#endif
 static miner_work_t g_miner_work __attribute__((aligned(16))) = {0};
 static TaskHandle_t g_miner_task_handles[STRATUM_MINER_TASK_COUNT] = {0};
+#if APP_HARDWARE_SHA_MINER
 static miner_task_context_t g_miner_task_contexts[STRATUM_MINER_TASK_COUNT] = {0};
+#endif
 static TaskHandle_t g_software_miner_task_handle = NULL;
 static miner_task_context_t g_software_miner_task_context = {0};
+#if APP_HARDWARE_SHA_MINER
 static TaskHandle_t g_synthetic_task_handles[STRATUM_MINER_TASK_COUNT] = {0};
 static synthetic_task_context_t g_synthetic_task_contexts[STRATUM_MINER_TASK_COUNT] = {0};
+#endif
 static TaskHandle_t g_stratum_session_task_handle = NULL;
 static volatile bool g_stratum_reconnect_requested = false;
 static volatile bool g_stratum_switch_to_primary_requested = false;
@@ -160,8 +169,10 @@ static volatile bool g_stratum_primary_probe_in_progress = false;
 static int64_t g_stratum_last_primary_probe_us = 0;
 static stratum_hashrate_sample_t g_hashrate_samples[STRATUM_HASHRATE_MAX_SAMPLES];
 static size_t g_hashrate_sample_count = 0;
+#if APP_HARDWARE_SHA_MINER
 static uint32_t g_synthetic_hw_block0[16] = {0};
 static uint32_t g_synthetic_hw_block1[16] = {0};
+#endif
 static volatile uint32_t g_benchmark_sink = 0;
 static char g_stratum_line[STRATUM_LINE_MAX];
 static char g_pending_notify_line[STRATUM_LINE_MAX];
@@ -184,11 +195,15 @@ static const DRAM_ATTR uint32_t SHA256_INITIAL_STATE[8] = {
 #include "stratum_miner_json_hex.inc"
 #include "stratum_miner_payout.inc"
 #include "stratum_miner_target.inc"
+#if APP_HARDWARE_SHA_MINER
 #include "stratum_miner_hw_sha.inc"
+#endif
 #include "stratum_miner_selfcheck.inc"
 #include "stratum_miner_parse.inc"
 #include "stratum_miner_share_queue.inc"
 #include "stratum_miner_engine.inc"
 #include "stratum_miner_tasks.inc"
+#if APP_HARDWARE_SHA_MINER
 #include "stratum_miner_synthetic.inc"
+#endif
 #include "stratum_miner_session.inc"

@@ -6,9 +6,9 @@
 [![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.5.3-red)](https://github.com/espressif/esp-idf/releases/tag/v5.5.3)
 [![Target: ESP32](https://img.shields.io/badge/target-ESP32-blue)](https://www.espressif.com/en/products/socs/esp32)
 
-M45 Core Firmware is ESP-IDF firmware for classic ESP32 boards that run a
-plain-TCP Stratum SHA-256 miner, local web setup UI, and either a small OLED or
-ideaspark LCD status display.
+M45 Core Firmware is ESP-IDF firmware for ESP32 boards that run a plain-TCP
+Stratum SHA-256 miner, local web setup UI, and either a small OLED or ideaspark
+LCD status display.
 
 Currently, on target hardware this averages about 620 Kh/s
 
@@ -17,16 +17,22 @@ or read [flashing details](docs/FLASHING.md).
 
 ## Supported Hardware
 
-- Chip: ESP32-WROOM-32 or another classic ESP32 target with hardware SHA.
+- Primary chip: ESP32-WROOM-32 or another classic ESP32 target with hardware
+  SHA.
+- Compatibility chip: ESP32-S3-WROOM source build using the software miner and
+  the default SSD1306 wiring.
 - Default display: SSD1306 128x64 I2C OLED at address `0x3c`.
 - OLED pins: SDA `GPIO5`, SCL `GPIO4`, reset `GPIO16`.
 - Unsupported OLED lookalikes: ESP32 OLED boards wired to SDA `GPIO21` and
   SCL `GPIO22` need a custom build or firmware port.
 - LCD build: ideaspark ESP32 1.9 inch LCD with ST7789 controller, 320x170.
-- Unsupported LCD lookalikes: ESP32-C3, ESP32-S3, and ESP32-1732S019 boards
-  need a separate firmware port and cannot run the current release binaries.
-- Flash: 4 MB ESP32 flash layout with bootloader at `0x1000`, partition table
-  at `0x8000`, settings/NVS at `0x9000..0xEFFF`, and app at `0x10000`.
+- Unsupported LCD lookalikes: ESP32-C3, ESP32-S3 LCD, and ESP32-1732S019
+  boards need a separate display port and cannot run the current release
+  binaries.
+- Classic ESP32 flash: 4 MB layout with bootloader at `0x1000`, partition
+  table at `0x8000`, settings/NVS at `0x9000..0xEFFF`, and app at `0x10000`.
+- ESP32-S3 source build: bootloader at `0x0`, partition table at `0x8000`, and
+  app at `0x10000`.
 
 | OLED Display | ideaspark 1.9 inch LCD | Web Stats | Web Settings |
 | --- | --- | --- | --- |
@@ -108,6 +114,12 @@ Flash through ESP-IDF:
 
 ```sh
 ./scripts/flash-firmware.sh --port /dev/ttyUSB0
+```
+
+Build and flash ESP32-S3:
+
+```sh
+./scripts/flash-esp32-s3.sh --port /dev/ttyACM0
 ```
 
 Use `COM4`-style ports on Windows and `/dev/cu.*` ports on macOS.

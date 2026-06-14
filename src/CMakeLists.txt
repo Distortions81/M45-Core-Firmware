@@ -77,17 +77,22 @@ if(NOT CMAKE_SCRIPT_MODE_FILE)
     endif()
 endif()
 
-idf_component_register(
-    SRCS
+set(APP_COMPONENT_SRCS
         "idf_main.c"
         "hex_utils.c"
-        "miner_candidate_loop_xtensa.S"
         "network.c"
         "display_ui.c"
         "status_text.c"
         "stratum_miner.c"
         "third_party/qrcode/qrcode.c"
         "web_server.c"
+)
+if(IDF_TARGET STREQUAL "esp32")
+    list(APPEND APP_COMPONENT_SRCS "miner_candidate_loop_xtensa.S")
+endif()
+
+idf_component_register(
+    SRCS ${APP_COMPONENT_SRCS}
     INCLUDE_DIRS "." "third_party/qrcode" "${CMAKE_CURRENT_BINARY_DIR}"
     PRIV_REQUIRES
         driver

@@ -44,6 +44,22 @@ Do not flash these release images to ESP32-C3, ESP32-S3, ESP32-1732S019 LCD
 boards, or ESP32 OLED boards wired to SDA `GPIO21` and SCL `GPIO22`. Those
 boards need a custom build or separate firmware port.
 
+## ESP32-S3 Development Flashing
+
+Build and flash the ESP32-S3 software-miner compatibility target with:
+
+```sh
+./scripts/flash-esp32-s3.sh --port /dev/ttyACM0
+```
+
+The helper builds into `build-s3`, flashes the ESP32-S3 bootloader, partition
+table, and app with ESP-IDF, then prints size output. Add `--clean` for a clean
+build or `--monitor` to open the serial monitor after flashing.
+
+ESP32-S3 uses the portable software SHA miner because the optimized hardware
+SHA mining engine is specific to classic ESP32. The published release images
+still target classic ESP32 and must not be flashed to an ESP32-S3.
+
 ## Local Release Flashing
 
 Download the OLED or LCD `.bin` image from the GitHub release:

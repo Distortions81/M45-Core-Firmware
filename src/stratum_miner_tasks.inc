@@ -11,6 +11,7 @@ static void miner_wake_tasks(void) {
   }
 }
 
+#if APP_HARDWARE_SHA_MINER
 static void miner_worker_task(void* arg) {
 #if STRATUM_MINE_YIELD_BATCHES > 0
   const miner_task_context_t* context = (const miner_task_context_t*)arg;
@@ -73,6 +74,7 @@ static void miner_worker_task(void* arg) {
 #endif
   }
 }
+#endif
 
 static void software_miner_worker_task(void* arg) {
   (void)arg;

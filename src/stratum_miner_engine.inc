@@ -46,7 +46,9 @@ static void miner_publish_current_job(bool preserve_nonce) {
   if (ready) {
     memcpy(g_miner_work.midstate, g_mining_job.header_midstate, sizeof(g_miner_work.midstate));
     memcpy(g_miner_work.tail_words, g_mining_job.header_tail_words, sizeof(g_miner_work.tail_words));
+#if APP_HARDWARE_SHA_MINER
     synthetic_hw_prepare_blocks(g_miner_work.hw_block0, g_miner_work.hw_block1, g_mining_job.header);
+#endif
     memcpy(g_miner_work.target_words, g_mining_job.share_target_words, sizeof(g_miner_work.target_words));
     g_miner_work.target_word0 = g_mining_job.share_target_words[0];
     memcpy(g_miner_work.block_target, g_mining_job.block_target, sizeof(g_miner_work.block_target));
@@ -81,6 +83,7 @@ static bool miner_claim_range(miner_work_t* out, uint32_t* start_nonce, uint32_t
   return has_work;
 }
 
+#if APP_HARDWARE_SHA_MINER
 static bool miner_claim_batch(
     miner_work_t* out,
     uint32_t* start_nonce,
@@ -88,6 +91,7 @@ static bool miner_claim_batch(
   *claimed_nonce_count = STRATUM_MINE_BATCH;
   return miner_claim_range(out, start_nonce, *claimed_nonce_count);
 }
+#endif
 
 static void miner_return_unscanned(
     const miner_work_t* work,
@@ -102,6 +106,7 @@ static void miner_return_unscanned(
   portEXIT_CRITICAL(&g_miner_work_mux);
 }
 
+#if APP_HARDWARE_SHA_MINER
 static void miner_advance_overrun_claim(
     const miner_work_t* work,
     uint32_t scanned_end_nonce,
@@ -114,7 +119,9 @@ static void miner_advance_overrun_claim(
   }
   portEXIT_CRITICAL(&g_miner_work_mux);
 }
+#endif
 
+#if APP_HARDWARE_SHA_MINER
 static inline __attribute__((always_inline)) miner_scan_result_t IRAM_ATTR miner_scan_hw_range_core(
     const miner_work_t* work,
     uint32_t start_nonce,
@@ -629,6 +636,7 @@ static miner_scan_result_t IRAM_ATTR miner_scan_hw_benchmark_range(
     uint32_t* checksum) {
   return miner_scan_hw_range_core(work, start_nonce, nonce_count, false, checksum);
 }
+#endif
 
 static miner_scan_result_t IRAM_ATTR miner_scan_software_range(
     const miner_work_t* work,

@@ -20,6 +20,8 @@ expects the official ESP-IDF checkout and export script.
   human-readable size summary.
 - `flash-firmware.sh`: build as needed, flash with ESP-IDF, print size output,
   and optionally open the serial monitor.
+- `flash-esp32-s3.sh`: build and flash the ESP32-S3 software-miner
+  compatibility target.
 - `monitor-serial.sh`: list serial ports or open `idf.py monitor`.
 - `show-firmware-size.sh`: print ESP-IDF and project size summaries for an
   existing build directory.
@@ -40,6 +42,7 @@ Common flashing commands:
 ./scripts/flash-firmware.sh --port /dev/ttyUSB0
 ./scripts/flash-firmware.sh --port /dev/ttyUSB0 --ideaspark-19-lcd
 ./scripts/flash-firmware.sh --port /dev/ttyUSB0 --monitor
+./scripts/flash-esp32-s3.sh --port /dev/ttyACM0
 ```
 
 `build-firmware.sh` and `flash-firmware.sh` normalize generated `sdkconfig`

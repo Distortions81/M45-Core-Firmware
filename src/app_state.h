@@ -38,8 +38,12 @@
 #define APP_SYNTHETIC_NO_WIFI_NO_OLED 0
 #endif
 
-#if !defined(CONFIG_IDF_TARGET_ESP32)
-#error "This firmware targets the classic ESP32 hardware SHA device only"
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#define APP_HARDWARE_SHA_MINER 1
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#define APP_HARDWARE_SHA_MINER 0
+#else
+#error "This firmware supports only ESP32 and ESP32-S3 targets"
 #endif
 
 #ifndef APP_ENABLE_SERIAL_LOGS

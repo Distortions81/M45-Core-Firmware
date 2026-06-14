@@ -4,6 +4,7 @@ static void stratum_ensure_miner_tasks(void) {
   if (!share_queue_prepare_storage()) {
     return;
   }
+#if APP_HARDWARE_SHA_MINER
   const uint8_t task_count = 1;
   for (uint8_t i = 0; i < task_count; ++i) {
     if (g_miner_task_handles[i] != NULL) {
@@ -24,6 +25,7 @@ static void stratum_ensure_miner_tasks(void) {
       ESP_LOGE(TAG, "Could not create miner task %u", (unsigned)i);
     }
   }
+#endif
 
 #if STRATUM_SOFTWARE_MINER_ENABLED
   if (g_software_miner_task_handle == NULL) {

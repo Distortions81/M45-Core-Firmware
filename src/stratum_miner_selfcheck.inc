@@ -116,11 +116,7 @@ void stratum_self_check(void) {
     ESP_LOGE(TAG, "prepared header hashing self-check failed");
     abort();
   }
-  uint32_t hw_block0[16];
-  uint32_t hw_block1[16];
   uint32_t software_state[8];
-  uint32_t hardware_state[8];
-  synthetic_hw_prepare_blocks(hw_block0, hw_block1, job.header);
   sha256d_midstate_second_state(job.header_midstate, job.header_tail_words, nonce, software_state);
   const uint32_t software_word0 =
       sha256d_midstate_second_word0_swapped(job.header_midstate,
@@ -148,6 +144,11 @@ void stratum_self_check(void) {
       abort();
     }
   }
+#if APP_HARDWARE_SHA_MINER
+  uint32_t hw_block0[16];
+  uint32_t hw_block1[16];
+  uint32_t hardware_state[8];
+  synthetic_hw_prepare_blocks(hw_block0, hw_block1, job.header);
   esp_sha_lock_engine(SHA2_256);
   synthetic_hw_sha256d_second_state(hw_block0, hw_block1, nonce, hardware_state);
   esp_sha_unlock_engine(SHA2_256);
@@ -155,6 +156,7 @@ void stratum_self_check(void) {
     ESP_LOGE(TAG, "hardware sha256d self-check failed");
     abort();
   }
+#endif
 }
 
 uint32_t stratum_benchmark_hashrate_us(int64_t duration_us) {
@@ -167,6 +169,7 @@ uint32_t stratum_benchmark_hashrate_us(int64_t duration_us) {
   prepare_job_hashing(&job);
   set_job_share_target(&job, "1");
 
+#if APP_HARDWARE_SHA_MINER
   miner_work_t work = {0};
   work.sequence = 1;
   memcpy(work.target_words, job.share_target_words, sizeof(work.target_words));
@@ -190,6 +193,20 @@ uint32_t stratum_benchmark_hashrate_us(int64_t duration_us) {
     hashes += result.hashes;
   } while (esp_timer_get_time() - start < duration_us);
   esp_sha_unlock_engine(SHA2_256);
+#else
+  const int64_t start = esp_timer_get_time();
+  do {
+    for (uint32_t i = 0; i < STRATUM_BOOT_BENCHMARK_CHUNK; ++i) {
+      checksum ^= sha256d_midstate_second_target_word0_raw_swapped(
+          job.header_midstate,
+          job.header_tail_words[0],
+          job.header_tail_words[1],
+          job.header_tail_words[2],
+          byteswap32(hashes + i));
+    }
+    hashes += STRATUM_BOOT_BENCHMARK_CHUNK;
+  } while (esp_timer_get_time() - start < duration_us);
+#endif
 
   g_benchmark_sink = checksum;
   const int64_t elapsed = esp_timer_get_time() - start;
