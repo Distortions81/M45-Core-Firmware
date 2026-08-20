@@ -8,7 +8,7 @@ settings during upgrades.
 
 Open the GitHub Pages flasher in Chrome or Edge on a desktop computer:
 
-https://distortions81.github.io/M45-Core-Firmware/
+https://m45core.github.io/M45-Core-Firmware/
 
 The page uses Web Serial and downloads the latest GitHub release manifest. It
 verifies SHA-256 checksums before enabling the flash button.

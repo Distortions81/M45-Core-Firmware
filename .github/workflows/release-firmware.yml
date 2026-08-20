@@ -79,7 +79,7 @@ jobs:
             printf '\n'
             printf '%s\n' 'Use the browser flasher:'
             printf '\n'
-            printf '%s\n' 'https://distortions81.github.io/M45-Core-Firmware/'
+            printf '%s\n' 'https://m45core.github.io/M45-Core-Firmware/'
             printf '\n'
             printf '%s\n' '## Release Assets'
             printf '\n'

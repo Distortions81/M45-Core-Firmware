@@ -12,7 +12,7 @@ LCD status display.
 
 Currently, on target hardware this averages about 620 Kh/s
 
-[Open the browser firmware flasher](https://distortions81.github.io/M45-Core-Firmware/)
+[Open the browser firmware flasher](https://m45core.github.io/M45-Core-Firmware/)
 or read [flashing details](docs/FLASHING.md).
 
 ## Supported Hardware
