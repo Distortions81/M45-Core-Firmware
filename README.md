@@ -47,6 +47,7 @@ account state. Check each listing directly before ordering.
 
 | Firmware build | Source | Listing | Price | Note |
 | --- | --- | --- | ---: | --- |
+| OLED/default | AliExpress | [Classic ESP32 development board](https://www.aliexpress.us/item/3256807345345946.html) | US $0.99–$7.00 | Screenless option; use the default OLED image. |
 | OLED/default | Amazon | [SSD1306 128x64 I2C OLED](https://www.amazon.com/dp/B0BFDHWZB8) | US $11.99 | Supported OLED board. |
 | LCD | Amazon | [ideaspark ESP32 1.9 inch LCD](https://www.amazon.com/dp/B0D6QXC813) | US $15.99 | Supported ideaspark LCD board. |
 
