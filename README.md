@@ -11,6 +11,23 @@ from your phone or computer.
 On supported hardware, it averages about **620 kH/s**. Mining rewards are not
 guaranteed.
 
+## Choose the Right Board
+
+The ready-to-use firmware supports these two classic ESP32 boards:
+
+| Screen | Supported hardware | Store | Price |
+| --- | --- | --- | ---: |
+| OLED | ESP32-WROOM-32 with a 128x64 SSD1306 OLED wired to pins 5 and 4 | [AliExpress](https://www.aliexpress.us/item/3256807345345946.html) | US $0.99–$7.00 |
+| OLED | ESP32-WROOM-32 with a 128x64 SSD1306 OLED wired to pins 5 and 4 | [Amazon](https://www.amazon.com/dp/B0BFDHWZB8) | US $11.99 |
+| LCD | ideaspark ESP32-WROOM-32 with a 1.9-inch, 320x170 ST7789 display | [Amazon](https://www.amazon.com/dp/B0D6QXC813) | US $15.99 |
+
+Board listings often look very similar. The ready-to-use firmware does **not**
+support ESP32-C3, ESP32-S3, ESP32-1732S019, or OLED boards wired to pins 21 and
+22. Check the chip and display details before ordering.
+
+Prices and board revisions can change, so confirm the listing details before
+you buy.
+
 ## Get Started
 
 You need a supported board, a USB data cable, and a desktop computer running
@@ -32,22 +49,6 @@ stats.
 
 For upgrades and other flashing methods, see the
 **[flashing guide](docs/FLASHING.md)**.
-
-## Choose the Right Board
-
-The ready-to-use firmware supports these two classic ESP32 boards:
-
-| Screen | Supported hardware | Example listing |
-| --- | --- | --- |
-| OLED | ESP32-WROOM-32 board with a 128x64 SSD1306 OLED wired to pins 5 and 4 | [AliExpress](https://www.aliexpress.us/item/3256807345345946.html) or [Amazon](https://www.amazon.com/dp/B0BFDHWZB8) |
-| LCD | ideaspark ESP32-WROOM-32 board with a 1.9-inch, 320x170 ST7789 display | [Amazon](https://www.amazon.com/dp/B0D6QXC813) |
-
-Board listings often look very similar. The ready-to-use firmware does **not**
-support ESP32-C3, ESP32-S3, ESP32-1732S019, or OLED boards wired to pins 21 and
-22. Check the chip and display details before ordering.
-
-Prices and board revisions can change, so confirm the listing details before
-you buy.
 
 ## What You Can Do
 
